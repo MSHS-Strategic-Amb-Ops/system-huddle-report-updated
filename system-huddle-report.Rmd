@@ -295,10 +295,16 @@ todays_year <- year(Sys.Date())
 prior_year <- year(Sys.Date())-1
 
 date_start <- as.Date(paste0(year(Sys.Date())-1,"-01-01"))
-date_end <- as.Date(paste0(year(Sys.Date()),"-12-31"))
+
+date_data <- access_raw_tbl %>%
+  group_by(CONTACT_DATE) %>%
+  summarise(total = n()) %>%
+  collect()
+
+date_end <- as.Date(max(date_data$CONTACT_DATE))
 
 date_start_formatted <- paste0(format(as.Date(date_start), "%Y-%m-%d"), " 00:00:00")
-date_end_formatted <- paste0(format(as.Date(date_start), "%Y-%m-%d"), " 00:00:00")
+date_end_formatted <- paste0(format(as.Date(date_end), "%Y-%m-%d"), " 00:00:00")
 
 monthOptions <- c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
 
@@ -644,7 +650,7 @@ highchart() %>%
   hc_title(text = paste0(x, " - % Encounters Closed <=5 Days"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
   hc_subtitle(text = paste0("Excludes Radiology and Rad Onc visits <br>",
                             "Includes Epic provider visits only <br>",
-                            "Based on visits from ",date_start," to ",missing_chg_cutOff),
+                            "Based on visits from ",date_start," to ",as.Date(missing_chg_cutOff)),
               align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
   hc_tooltip(shared = TRUE, borderColor = "black")
 }) %>%
@@ -685,7 +691,7 @@ highchart() %>%
   hc_title(text = paste0(x, " - % Encounters Closed <=5 Days"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
   hc_subtitle(text = paste0("Includes MSUS, MSDMG, and MSBI <br>",
                             "Includes Epic provider visits only <br>",
-                            "Excludes Radiology and Rad Onc visits <br>", "Based on visits from ",date_start," to ",missing_chg_cutOff),
+                            "Excludes Radiology and Rad Onc visits <br>", "Based on visits from ",date_start," to ",as.Date(missing_chg_cutOff)),
               align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
   hc_tooltip(shared = TRUE, borderColor = "black")
 }) %>%
