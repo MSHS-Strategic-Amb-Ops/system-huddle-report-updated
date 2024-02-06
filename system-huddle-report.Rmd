@@ -1,0 +1,1138 @@
+---
+params:
+  output_dir: "/nfs/data/Applications/Ambulatory/"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+    fig_width: 7
+    fig_height: 6
+resource_files:
+- hh_crosswalk.csv
+- Rad_Onc_Data.csv
+- Radiology_Data.csv
+- Radiology_Site_Mapping.csv
+- Epic Department Mapping Correction.csv
+- hh_crosswalk.csv
+- Radiology_Data.csv
+- Rad_Onc_Data.csv
+- Radiology_Site_Mapping.csv
+- Epic Department Mapping Correction.csv
+- open_encounters_exclusion.xlsx
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+<style type="text/css">
+div.main-container {
+  max-width: 2000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+<style>
+.tocify {
+color: black;
+}
+<!-- } -->
+<!-- .tocify .tocify-header { -->
+<!--     position: fixed; -->
+<!--     <!-- top: 50px; --> -->
+<!--     left: 50px; -->
+<!--     width: 350px; -->
+<!--     <!-- border: solid 3px black; --> -->
+<!--     <!-- height: 200px; --> -->
+<!--  border: none; -->
+<!-- } -->
+.tocify .tocify-header .active {
+color: white;
+background: #d80b8c;
+font-weight: bold;
+}
+<!-- .tocify .tocify-item { -->
+<!-- background: white; -->
+<!-- color: black; -->
+<!--  border: none; -->
+<!-- } -->
+</style>
+<style>
+  .nav-pills>li>a:hover, .nav-pills>li>a:focus, .nav-pills>li.active>a,     .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus{
+     background-color: #212070;
+     }
+</style>
+<style>
+.container { width: 1800px; }
+h2 {
+  background-color: #dddedd;
+  color: black;
+  text-indent: 20px;
+  <!-- font-weight: bold; -->
+}
+h3 {
+  background-color: #f2f2f2;
+  color: black;
+  text-indent: 20px;
+  <!-- font-weight: bold; -->
+}
+h4 {
+  background-color: #f2f2f2;
+  color: black;
+  text-indent: 20px;
+  <!-- font-weight: bold; -->
+}
+</style>
+```{r Load Packages, echo = FALSE, warning = FALSE, message = FALSE}
+suppressMessages({
+  memory.limit(size = 100000000)
+  library(readxl)
+  library(writexl)
+  library(plyr)
+  library(dplyr)
+  library(data.table)
+  library(zoo)
+  library(shiny)
+  library(shinydashboard)
+  library(shinydashboardPlus)
+  library(shinyWidgets)
+  library(htmlwidgets)
+  library(lubridate)
+  library(tcltk)
+  library(tidyverse)
+  library(plotly)
+  library(knitr)
+  library(kableExtra)
+  library(leaflet)
+  library(grid)
+  library(gridExtra)
+  library(eeptools)
+  library(ggQC)
+  library(zipcodeR)
+  library(utils)
+  library(scales)
+  library(chron)
+  library(bupaR)
+  library(shiny)
+  library(DT)
+  library(DiagrammeR)
+  library(shinyalert)
+  library(edeaR)
+  library(processmapR)
+  library(processmonitR)
+  library(processanimateR)
+  library(tidyr)
+  library(lubridate)
+  library(RColorBrewer)
+  library(DiagrammeR)
+  library(ggplot2)
+  library(leaflet)
+  library(readr)
+  library(highcharter)
+  library(ggforce) # for 'geom_arc_bar'
+  library(packcircles) # for packed circle graph
+  library(viridis)
+  library(ggiraph)
+  library(treemapify)
+  library(treemap)
+  library(broom)
+  library(extrafont)
+  library(tis) # for US holidays
+  library(vroom)
+  library(sjmisc)
+  library(tools)
+  library(here)
+  library(shinyBS)
+  library(shinyscreenshot)
+  library(fasttime)
+  library(shinycssloaders)
+  library(feather)
+  # library(zipcodeR)
+  library(formattable)
+  library(shinyjs)
+  library(janitor)
+  library(patchwork)
+  library(flexdashboard)
+  # library(tidyverse)
+  # library(viridis)
+  # library(hrbrthemes)
+  # library(plotly)
+  # install.packages("bsts")
+  library(bsts)
+  library(reactable)
+  # install.packages("reactablefmtr")
+  library(reactablefmtr)
+  library(svDialogs)
+  # library(openxlsx)
+  library(flextable)
+  library(officedown)
+  library(officer)
+  library(magrittr)
+  library(webshot) 
+  library(png)
+  library(ggh4x)
+  library(RODBC)
+  library(DBI)
+  library(odbc)
+  library(dbplyr)
+  library(pool)
+  library(emojifont)
+})
+
+```
+
+
+```{r Graph asthetics, echo = FALSE, warning = FALSE, message = FALSE}
+### Color Functions for Graphs ============================================================
+# Mount Sinai corporate colors "USE THIS TO ADD COLORS"
+MountSinai_colors <- c(
+  `dark purple`  = "#212070",
+  `dark pink`    = "#d80b8c",
+  `dark blue`    = "#00aeef",
+  `dark grey`    = "#7f7f7f",
+  `yellow`       = "#ffc000",
+  `purple`       = "#7030a0",
+  `med purple`   = "#5753d0",
+  `med pink`     = "#f75dbe",
+  `med blue`     = "#5cd3ff",
+  `med grey`     = "#a5a7a5",
+  `light purple` = "#c7c6ef",
+  `light pink`   = "#fcc9e9",
+  `light blue`   = "#c9f0ff",
+  `light grey`   = "#dddedd"
+  )
+# Function to extract Mount Sinai colors as hex codes
+# Use Character names of MountSinai_colors
+MountSinai_cols <- function(...) {
+  cols <- c(...)
+  
+  if (is.null(cols))
+    return (MountSinai_colors)
+  
+  MountSinai_colors[cols]
+}
+# Color Function that can be used to call all colors is "MountSinai_cols()"
+# Use in ggplot 
+  #MountSinai_cols()       # will provide all colors and their hex codes in a table 
+  #MountSinai_cols("pink") # will provide color name and the hex code for the pink color
+# Create palettes 
+MountSinai_palettes <- list(
+  `all`   = MountSinai_cols("dark purple","dark pink","dark blue","dark grey",
+                            "med purple","med pink","med blue","med grey", 
+                            "light purple","light pink","light blue","light grey"),
+  
+  `main`  = MountSinai_cols("dark purple","dark pink","dark blue","dark grey"),
+  
+  `purple`  = MountSinai_cols("dark purple","med purple","light purple"),
+  
+  `pink`  = MountSinai_cols("dark pink","med pink","light pink"),
+  
+  `blue`  = MountSinai_cols("dark blue", "med blue", "light blue"),
+  
+  `grey`  = MountSinai_cols("dark grey", "med grey", "light grey"),
+  
+  `purpleGrey` = MountSinai_cols("dark purple", "dark grey"),
+  
+  `pinkBlue` = MountSinai_cols("dark pink", "dark blue")
+  
+)
+# MountSinai_palettes
+# Return function to interpolate a Mount Sinai color palette
+# default value is the main palette, reverse = True will change the order
+MountSinai_pal <- function(palette = "all", reverse = FALSE, ...) {
+  pal <- MountSinai_palettes[[palette]]
+  
+  if (reverse) pal <- rev(pal)
+  
+  colorRampPalette(pal, ...)
+}
+# Scale Function for ggplot can be used instead of scale_color_manual
+scale_color_MountSinai <- function(palette = "all", discrete = TRUE, reverse = FALSE, ...) {
+  pal <- MountSinai_pal(palette = palette, reverse = reverse)
+  
+  if (discrete) {
+    discrete_scale("colour", paste0("MountSinai_", palette), palette = pal, ...)
+  } else {
+    scale_color_gradientn(colours = pal(256), ...)
+  }
+}
+# Scale Fill for ggplot insetead of scale_fill_manual 
+scale_fill_MountSinai <- function(palette = "all", discrete = TRUE, reverse = FALSE, ...) {
+  pal <- MountSinai_pal(palette = palette, reverse = reverse)
+  if (discrete) {
+    discrete_scale("fill", paste0("MountSinai_", palette), palette = pal, ...)
+  } else {
+    scale_fill_gradientn(colours = pal(256), ...)
+  }
+}
+# Use in ggplot 
+  # scale_color_MountSinai("main")
+```
+
+
+```{r Connect to Data Source, echo = FALSE, warning = FALSE, message = FALSE}
+
+# Connection to Oracle DB ------------------------------------------------------
+conn1 <- dbPool(drv = odbc(), dsn = "OAO Cloud DB SoYoun", timeout = 30)
+
+access_raw_tbl <- tbl(conn1, "MV_DM_PATIENT_ACCESS")
+                      
+```
+
+
+```{r Global Functions, echo = FALSE, warning = FALSE, message = FALSE}
+
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
+```
+
+
+```{r Global Variables, echo = FALSE, warning = FALSE, message = FALSE}
+
+report_run_date <- Sys.Date()
+
+todays_year <- year(Sys.Date())
+prior_year <- year(Sys.Date())-1
+
+date_start <- as.Date(paste0(year(Sys.Date())-1,"-01-01"))
+date_end <- as.Date(paste0(year(Sys.Date()),"-12-31"))
+
+date_start_formatted <- paste0(format(as.Date(date_start), "%Y-%m-%d"), " 00:00:00")
+date_end_formatted <- paste0(format(as.Date(date_start), "%Y-%m-%d"), " 00:00:00")
+
+monthOptions <- c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+
+# Missing Charges Date Cutoff ------------------
+business_days <- seq(date_start, date_end, by="days")[!is.weekend(seq(date_start, date_end, by="days"))]
+missing_chg_cutOff <- business_days[length(business_days)-3] # Should this be 2 or 3?
+
+```
+
+
+```{r Import HH Data, echo = FALSE, warning = FALSE, message = FALSE}
+# Run Locally -----------------------------
+# con_hh <- odbcConnect("handhygiene") # Connect to Server
+# hh_data_comp_raw <- sqlQuery(con_hh, "SELECT * FROM qidm_dev.dbo.amb_hand_hygiene_comp") # Master Referrals Data
+# hh_data_comp_raw_pt_entry <- sqlQuery(con_hh, "SELECT * FROM qidm_dev.dbo.PT_AMB_HAND_HYGIENE_COMP") # Master Referrals Data
+
+
+# Run on Server ---------------------------
+con_hh <- dbConnect(odbc(),
+                    Driver = "SQLServer",
+                    Server = "10.2.42.69",
+                    UID = "kweons01",
+                    PWD = "Pasword01#PasPasword01#Pas",
+                    Port = 1433)
+hh_data_comp_raw <- dbGetQuery(con_hh, "SELECT * FROM qidm_dev.dbo.amb_hand_hygiene_comp")
+hh_data_comp_raw <- as.data.frame(hh_data_comp_raw)
+
+hh_data_comp_raw_pt_entry <- dbGetQuery(con_hh, "SELECT * FROM qidm_dev.dbo.PT_AMB_HAND_HYGIENE_COMP")
+hh_data_comp_raw_pt_entry <- as.data.frame(hh_data_comp_raw_pt_entry)
+
+
+# Import HH Data Mapping ------------------
+hh_crosswalk <- as.data.frame(read_csv("/nfs/data/Applications/Ambulatory/hh_crosswalk.csv"))
+# hh_crosswalk <- as.data.frame(read_csv(file.choose()))
+ 
+```
+
+
+```{r Radiology and Rad Onc Data, echo = FALSE, warning = FALSE, message = FALSE}
+
+# Import Radiology and Rad Onc Data -------------------
+rad_onc_data_raw <- as.data.frame(read.csv("/nfs/data/Applications/Ambulatory/Rad_Onc_Data.csv"))
+radiology_data_raw <- as.data.frame(read.csv("/nfs/data/Applications/Ambulatory/Radiology_Data.csv"))
+radiology_ref <- as.data.frame(read.csv("/nfs/data/Applications/Ambulatory/Radiology_Site_Mapping.csv"))
+
+
+## Import Locally -------------------------------------
+# rad_onc_data_raw <- as.data.frame(read.csv("Rad_Onc_Data.csv"))
+# radiology_data_raw <- as.data.frame(read.csv("Radiology_Data.csv"))
+# radiology_ref <- as.data.frame(read.csv("Radiology_Site_Mapping.csv"))
+
+
+# Process Radiology + Rad Onc Data --------------------
+## Rad Onc Data 
+rad_onc_data_raw <- rad_onc_data_raw %>%
+  mutate_at(c('MSBI', 'MSH.MSDFP', 'MSUS', 'MSW'), as.numeric) %>%
+  mutate(Campus.Specialty = "Radiation Oncology",
+         Department = "Radiation Oncology",
+         Appt.Year = format(as.Date(as.yearmon(Month, "%b-%y"), format = "%b %y"),"%Y"),
+         Appt.MonNum = as.numeric(format(as.Date(as.yearmon(Month, "%b-%y"), format = "%b %y"),"%m")),
+         Appt.Month = format(as.Date(as.yearmon(Month, "%b-%y"), format = "%b %y"),"%b"),
+         Visit.Method = "IN PERSON") %>%
+  dplyr::select(-Month) %>%
+  pivot_longer(MSBI:MSW,
+               names_to = "Campus",
+               values_to = "monthly_vol") %>%
+  mutate(Campus = ifelse(Campus == "MSH.MSDFP","MSH-MSDFP",Campus))
+
+
+# Process Radiology Data
+radiology_data_raw[,2:length(radiology_data_raw)] <-lapply(radiology_data_raw[,2:length(radiology_data_raw)],as.numeric)
+radiology_data_raw <- radiology_data_raw %>%
+  pivot_longer(BC:UC,
+               names_to = "Campus",
+               values_to = "monthly_vol")
+
+radiology_data_raw$Campus <- radiology_ref$Campus[match(radiology_data_raw$Campus, radiology_ref$ID)]
+
+radiology_data_raw <- radiology_data_raw %>%
+  group_by(Month, Campus) %>%
+  summarise(monthly_vol = sum(monthly_vol)) %>%
+  mutate(Campus.Specialty = "Radiology",
+         Department = "Radiology",
+         Appt.Year = format(as.Date(as.yearmon(Month, "%b-%y"), format = "%b %y"),"%Y"),
+         Appt.MonNum = as.numeric(format(as.Date(as.yearmon(Month, "%b-%y"), format = "%b %y"),"%m")),
+         Appt.Month = format(as.Date(as.yearmon(Month, "%b-%y"), format = "%b %y"),"%b"),
+         Visit.Method = "IN PERSON") %>%
+  dplyr::select(-Month) %>%
+  arrange(Appt.Year, Appt.MonNum)
+
+
+# Merge Rad Onc and Radiology Data 
+rad_radOnc_data <- bind_rows(rad_onc_data_raw, radiology_data_raw)
+
+rad_radOnc_data <- rad_radOnc_data %>%
+  mutate(Campus = toupper(Campus)) %>%
+  filter(Appt.Year %in% c(prior_year, todays_year)) %>%
+  group_by(Campus, Appt.Year, Appt.Month) %>%
+  summarise(total = sum(monthly_vol))
+
+
+# Filter out Sites --------------------------
+rad_radOnc_data <- rad_radOnc_data %>%
+  filter(!Campus %in% c("MSB", "MS NOW", "MSHP", "OTHER")) 
+
+rad_onc_date <- paste0(rad_onc_data_raw[nrow(rad_onc_data_raw),"Appt.Month"],", ", rad_onc_data_raw[nrow(rad_onc_data_raw),"Appt.Year"])
+radiology_date <- paste0(radiology_data_raw[nrow(radiology_data_raw),"Appt.Month"],", ", radiology_data_raw[nrow(radiology_data_raw),"Appt.Year"])
+
+```
+
+
+```{r Hand Hygiene Data Processing, echo = FALSE, warning = FALSE, message = FALSE}
+
+# Processs RedCap Data --------------------------
+## Format Column Names --------------------
+colnames(hh_data_comp_raw) <- tolower(colnames(hh_data_comp_raw))
+
+
+# Manuallyt Map Site Information ---------
+## Map MSD units
+hh_data_comp_raw$site<- ifelse(hh_data_comp_raw$site == "MSD",
+                                hh_crosswalk$unit[match(trim(hh_data_comp_raw$msd_unit), trim(hh_crosswalk$Location))], hh_data_comp_raw$site)
+## Map msh_unit
+hh_data_comp_raw$site<- ifelse(hh_data_comp_raw$site == "MSH",
+                                hh_crosswalk$unit[match(trim(hh_data_comp_raw$msh_unit), trim(hh_crosswalk$Location))], hh_data_comp_raw$site)
+
+hh_data_comp <- hh_data_comp_raw %>%
+  dplyr::select(-language) %>%
+  pivot_longer(
+    c("msb_unit","msh_unit","msd_unit","nyee_unit","msq_unit","msm_unit","msw_unit","net_unit"),
+    names_to = "unit_site",
+    values_to = "unit"
+  ) %>%
+  filter(date != "NULL") %>%
+  mutate_if(is.numeric, as.character) %>%
+  filter(!is.na(site))
+
+
+# Process Patient Entry Data --------------------
+colnames(hh_data_comp_raw_pt_entry) <- tolower(colnames(hh_data_comp_raw_pt_entry))
+hh_data_comp_pt_entry <- hh_data_comp_raw_pt_entry %>%
+  rename(date = data_date) %>%
+  mutate(site = ifelse(site == "MSH", "MSDFP", site)) %>%
+  mutate_if(is.numeric, as.character) 
+
+hh_data_comp_pt_entry$date <- as.character(hh_data_comp_pt_entry$date)
+hh_data_comp <- bind_rows(hh_data_comp, hh_data_comp_pt_entry)
+
+
+
+# Merge RedCap and Patient Entry Data -----------
+hh_data_merged <- hh_data_comp %>%
+  filter(!site %in% c("MS NOW", "MSHP", "NYEE", "MSQ","OTHER","MSB")) %>%
+  filter(!is.na(site)) %>%
+  dplyr::select(site, unit, date, worker___1, worker___2, worker___3, provider_hands_bef, provider_hands_aft, nurse_hands_bef, nurse_hands_aft, mt_hands_bef, mt_hands_aft) %>%
+  mutate(across(4:12, as.numeric)) %>%
+  mutate_if(is.numeric, ~ifelse(is.na(.),0,.)) %>%
+  mutate_if(is.numeric, ~ifelse(.==2,0,.)) %>%
+  group_by(site, unit, date) %>%
+  summarise(worker___1 = sum(worker___1),
+            worker___2 = sum(worker___2),
+            worker___3 = sum(worker___3),
+            provider_hands_bef = sum(provider_hands_bef),
+            provider_hands_aft = sum(provider_hands_aft),
+            nurse_hands_bef = sum(nurse_hands_bef),
+            nurse_hands_aft = sum(nurse_hands_aft),
+            mt_hands_bef = sum(mt_hands_bef),
+            mt_hands_aft = sum(mt_hands_aft)) %>%
+  mutate(date = as.Date(date, "%Y-%m-%d"),
+         Appt.Year = as.numeric(format(as.Date(date, "%Y-%m-%d"),"%Y")),
+         Appt.WeekNum = lubridate::epiweek(as.Date(date, "%Y-%m-%d"))) %>%
+  filter(Appt.Year >= as.numeric(prior_year))
+
+hh_data_merged_role <- hh_data_comp %>%
+  dplyr::select(site, unit, date, provider_hands_bef, provider_hands_aft, nurse_hands_bef, nurse_hands_aft, mt_hands_bef, mt_hands_aft) %>%
+  pivot_longer(provider_hands_bef: mt_hands_aft,
+               names_to = "role",
+               values_to = "compliance") %>%
+  mutate(date = as.Date(date, "%Y-%m-%d"),
+         Appt.Year = as.numeric(format(as.Date(date, "%Y-%m-%d"),"%Y")),
+         Appt.WeekNum = lubridate::epiweek(as.Date(date, "%m/%d/%Y")),
+         compliance = ifelse(compliance == 2,0,compliance)) %>%
+  filter(compliance != "") %>%
+  filter(compliance != 2) %>%
+  filter(Appt.Year >= as.numeric(prior_year)) %>%
+  group_by(site, unit, date, Appt.Year, Appt.WeekNum, role, compliance) %>%
+  summarise(total_obs = n())%>%
+  mutate(compliance = ifelse(compliance == 0, "No", "Yes"),
+         total_obs = as.numeric(total_obs)) %>%
+  pivot_wider(
+    names_from = compliance,
+    values_from = total_obs,
+    values_fill=list(total_obs=0)) %>%
+  ungroup() %>%
+  mutate(total_obs = `Yes`+`No`)
+  
+
+# Manually Format NET to NETWORK ------------------------
+hh_data_merged <- hh_data_merged %>%
+  mutate(site = ifelse(site == "NET","NETWORK",site)) %>%
+  arrange(date) %>%
+  filter(unit != "NULL")
+hh_data_merged_role <- hh_data_merged_role %>%
+  mutate(site = ifelse(site == "NET","NETWORK",site)) %>%
+  arrange(date) %>%
+  filter(unit != "NULL")
+hh_data_merged <- hh_data_merged %>%
+  mutate(site = ifelse(unit == "UCC", "MSUS",site))
+
+```
+
+
+```{r Scheduling Data Processing, echo = FALSE, warning = FALSE, message = FALSE}
+
+scheduling_data <- access_raw_tbl %>%
+  filter(!is.na(SITE)) %>%
+  mutate(Campus = case_when(SITE == "MSDD" ~ "MSDMG",
+                            TRUE ~ SITE),
+         Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
+                            DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC",
+                            TRUE ~ Campus)) %>%
+  filter(!Campus %in% c("MSB", "MS NOW", "MSHP", "OTHER", "DUBIN", "RTC")) %>%
+  mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
+         Appt.Year = year(CONTACT_DATE),
+         Appt.MonNum = month(CONTACT_DATE)) %>%
+  mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
+         New.PT3 = ifelse(is.na(LOS_NAME), NA, ifelse(LOC_NAME %like% "INITIAL|NEW", "New", "Established")),
+         enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
+  mutate(open.days = ifelse(enc.status == "OPEN", 
+                            TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
+                            TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
+  mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" ))) 
+  
+```
+
+
+# System Huddle Ambulatory Report
+*Report run date: `r report_run_date`*<br/>
+*Rad Onc and Radiology data included only in monthly volumes.*<br/>
+*Data excludes eIDX, MD Office data.*<br/>
+*Data excludes RTC and Dubin data.*<br/>
+________________________________________________________________________________________________________________________________________________
+<br/>
+
+## Metrics Overview
+### 1.Open Encounters Trending
+```{r Open Encounters Metric Trending by Site 3, fig.width=12, fig.height = 5, fig.align = 'center', echo = FALSE, warning = FALSE, message = FALSE}
+
+# EPIC Open Encounters Exclusion Criteria ---------------------------------
+missing_exc_dept <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_dept.xlsx")
+missing_exc_resource <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_res.xlsx")
+missing_exc_visitType <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_visit.xlsx")
+
+# missing_exc_dept <- read_excel("open_encounters_exclusion_dept.xlsx")
+# missing_exc_resource <- read_excel("open_encounters_exclusion_res.xlsx")
+# missing_exc_visitType <- read_excel("open_encounters_exclusion_visit.xlsx")
+
+exc_depts <- unique(missing_exc_dept$DEPARTMENT)
+exc_providers <- unique(missing_exc_resource$PROVIDER)
+
+
+missing_chg_cutOff <- paste0(format(as.Date(missing_chg_cutOff), "%Y-%m-%d"), " 00:00:00")
+
+
+missing_chg_data <- scheduling_data %>%
+  filter(Appt.Year >= prior_year) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived") %>%
+  filter(VISIT_PROV_STAFF_RESOURCE_C == 1) %>%
+  filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= APPT_DTTM) %>%
+  mutate(clo.5days = ifelse(open.days <= 5, 'YES', 'NO')) %>%
+  group_by(Campus, DEPARTMENT_NAME, Provider, PRC_NAME, Appt.Year, Appt.MonNum, enc.status, clo.5days) %>%
+  summarise(total = n()) %>%
+  collect()
+  
+missing_chg_data <- missing_chg_data %>% 
+  filter(DEPARTMENT_NAME %!in% exc_depts) %>%
+  filter(Provider %!in% exc_providers) %>%
+  filter(!str_detect(PRC_NAME, "ECHO|SOCIAL|NURSE|NUTRITION|LAB|TREATMENT")) %>%
+  mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+  mutate(Appt.Year = as.character(Appt.Year)) %>%
+  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+
+missing_chg_data_trend_5days <- missing_chg_data %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, Appt.MonthYear, enc.status, clo.5days) %>%
+  summarise(total = n()) %>%
+  collect() %>%
+  group_by(Campus, Appt.Year, Appt.MonthYear) %>%
+  mutate(total.enc = sum(total)) %>%
+  pivot_wider(names_from = clo.5days,
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(clo.5days.perc = round((YES/(total.enc))*100,0)) %>%
+  filter(enc.status == "CLOSED")
+
+
+missing_chg_data_trend_downtown_5days <- missing_chg_data %>%
+  filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>%
+  mutate(Campus = "MS Downtown") %>%
+  group_by(Campus, Appt.MonthYear, enc.status, clo.5days) %>%
+  summarise(total = n()) %>%
+  group_by(Campus, Appt.MonthYear) %>%
+  mutate(total.enc = sum(total)) %>%
+  collect() %>%
+  pivot_wider(names_from = clo.5days,
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(clo.5days.perc = round((YES/(total.enc))*100,0)) %>%
+  filter(enc.status == "CLOSED")
+
+
+# missing_chg_data_trend_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_5days.rds"))
+# missing_chg_data_trend_downtown_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_downtown_5days.rds"))
+
+```
+
+
+```{r Open Encounters (5 Days) Metric Trending by Site Output, fig.width=12, fig.height = 5, fig.align = 'center', echo = FALSE, warning = FALSE, message = FALSE}
+# Total Encounters and % Closed within 7 Days by Site
+map(unique(missing_chg_data_trend_5days$Campus), function(x){
+highchart() %>%
+  hc_yAxis_multiples(
+    list(title = list(text = "Total Encounters"), lineWidth = 3),
+    list(title = list(text = "% of Encounters"), showLastLabel = FALSE, opposite = TRUE)
+  ) %>%
+  hc_xAxis(title = list(text = ""),
+           categories = (missing_chg_data_trend_5days %>% filter(Campus == x))$Appt.MonthYear,
+           type = "datetime",
+           labels = list(format = '{value:%m/%d}')
+           # dateTimeLabelFormats = list(month = '%Y-%m')
+           ) %>%
+  hc_add_series(name = "Total Encounters",
+                data = (missing_chg_data_trend_5days %>% filter(Campus == x))$total.enc,
+                type = 'column',
+                color='#212070',
+                dataLabels = list(enabled = TRUE, format='{point.y}')) %>%
+  hc_add_series(name = "% Encounters Closed <=5 Days",
+                data = (missing_chg_data_trend_5days %>% filter(Campus == x))$clo.5days.perc,
+                type = "line", yAxis = 1,
+                color='#d80b8c',
+                lineColor='#d80b8c',
+                dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
+  hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
+  hc_title(text = paste0(x, " - % Encounters Closed <=5 Days"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+  hc_subtitle(text = paste0("Excludes Radiology and Rad Onc visits <br>",
+                            "Includes Epic provider visits only <br>",
+                            "Based on visits from ",date_start," to ",missing_chg_cutOff),
+              align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
+  hc_tooltip(shared = TRUE, borderColor = "black")
+}) %>%
+  hw_grid(ncol = 2, rowheight = 400) %>% htmltools::browsable()
+
+# rm(missing_chg_data_trend_5days)
+# invisible(gc())
+
+```
+--------------------------------------------------------------------------------
+```{r Open Encounters (5 Days) Metric Trending Summarized, fig.width=12, fig.height = 5, fig.align = 'center', echo = FALSE, warning = FALSE, message = FALSE}
+
+# Based on Metric % Encounteres Closed <=7 days
+map(unique(missing_chg_data_trend_downtown_5days$Campus), function(x){
+highchart() %>%
+  hc_yAxis_multiples(
+    list(title = list(text = "Total Encounters"), lineWidth = 3),
+    list(title = list(text = "% of Encounters"), showLastLabel = FALSE, opposite = TRUE)
+  ) %>%
+  hc_xAxis(title = list(text = ""),
+           categories = missing_chg_data_trend_downtown_5days$Appt.MonthYear,
+           type = "datetime",
+           labels = list(format = '{value:%m/%d}')
+           # dateTimeLabelFormats = list(month = '%Y-%m')
+           ) %>%
+  hc_add_series(name = "Total Encounters",
+                data = (missing_chg_data_trend_downtown_5days %>% filter(Campus == x))$total.enc,
+                type = 'column',
+                color='#212070',
+                dataLabels = list(enabled = TRUE, format='{point.y}')) %>%
+  hc_add_series(name = "% Encounters Closed <=5 Days",
+                data = (missing_chg_data_trend_downtown_5days %>% filter(Campus == x))$clo.5days.perc,
+                type = "line", yAxis = 1,
+                color='#d80b8c',
+                lineColor='#d80b8c',
+                dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
+  hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
+  hc_title(text = paste0(x, " - % Encounters Closed <=5 Days"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+  hc_subtitle(text = paste0("Includes MSUS, MSDMG, and MSBI <br>",
+                            "Includes Epic provider visits only <br>",
+                            "Excludes Radiology and Rad Onc visits <br>", "Based on visits from ",date_start," to ",missing_chg_cutOff),
+              align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
+  hc_tooltip(shared = TRUE, borderColor = "black")
+}) %>%
+  hw_grid(ncol = 2, rowheight = 450) %>% htmltools::browsable()
+
+
+rm(missing_chg_data_trend_downtown_5days)
+invisible(gc())
+```
+
+
+### 2. Visit Volume Variance Trending
+```{r Volume Variance to 2019 Metric Trending by Site, echo = FALSE, warning = FALSE, message = FALSE}
+
+# Format Data --------------------------
+vol_trending <- scheduling_data %>%
+  filter(DERIVED_STATUS_DESC == "Arrived") %>%
+  filter(TO_DATE(date_start_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
+  # filter(TO_DATE(date_end_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
+  group_by(Campus, Appt.Year, Appt.MonNum) %>%
+  summarise(total = n()) %>%
+  collect() %>%
+  mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+  mutate(Appt.Year = as.character(Appt.Year))
+
+
+# Merge with radiology and rad onc monthly volume
+vol_trending <- bind_rows(vol_trending, rad_radOnc_data)
+vol_trending <- vol_trending %>%
+  group_by(Campus, Appt.Year, Appt.Month) %>%
+  summarise(total = sum(total)) %>%
+  pivot_wider(names_from = Appt.Year,
+              values_from = total) %>%
+  # mutate(target_5_perc = round(`2022`*1.05)) %>%
+  arrange(factor(Appt.Month, levels = monthOptions)) %>%
+  arrange(Campus) %>%
+  mutate(perc_change = round(((`2024` - `2023`)/`2023`)*100, 0))
+
+
+# Output Graphs ------------------------
+map(unique(vol_trending$Campus), function(x){
+highchart() %>%
+  hc_yAxis_multiples(
+    list(title = list(text = "Total Visits"), lineWidth = 3, min = 0),
+    list(title = list(text = "% Change from Prior Year"), min = -50,max=200,
+           labels = list(format = '{value}%'),
+           showLastLabel = FALSE, opposite = TRUE)
+  ) %>%
+  hc_xAxis(title = list(text = ""),
+           categories = (vol_trending %>% filter(Campus == x))$Appt.Month,
+           type = "datetime",
+           labels = list(format = '{value:%m/%d}')
+           # dateTimeLabelFormats = list(month = '%Y-%m')
+           ) %>%
+  hc_add_series(name   = "2023 Total Visits",
+                data   = (vol_trending %>% filter(Campus == x))$`2023`,
+                # type = 'column',
+                # color = '#a5a7a5'
+                marker = list(enabled= TRUE),
+                color='#a5a7a5',
+                lineWidth=3,
+                lineColor='#a5a7a5'
+                ) %>%
+  hc_add_series(name = "2024 Total Visits",
+                data   = (vol_trending %>% filter(Campus == x))$`2024`,
+                marker = list(enabled= TRUE),
+                color='#212070',
+                lineWidth=3,
+                lineColor='#212070'
+                ) %>%
+  hc_add_series(name = "% Change from Prior Year",
+                data = (vol_trending %>% filter(Campus == x))$perc_change,
+                type = "column", yAxis = 1,
+                                zones = list(list(value = 0,
+                                  color = 'red')),
+                color='#00b800',
+                # lineColor='#d80b8c',
+                dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
+  hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
+    hc_title(text = paste0(x, " - Visit Volume Variance"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+    hc_subtitle(text = paste0("Includes Radiology and Rad Onc visits up to ",radiology_date,"<br> Based on visits from ",date_start," to ",date_end),
+              align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
+    hc_tooltip(shared = TRUE, borderColor = "black")
+  }) %>%
+  hw_grid(ncol = 2, rowheight = 400) %>% htmltools::browsable()
+
+```
+
+--------------------------------------------------------------------------------
+
+```{r Volume Variance to 2019 Metric Trending Summarized, echo = FALSE, warning = FALSE, message = FALSE}
+
+# Format Data --------------------------
+vol_trending_downtown <- scheduling_data %>%
+  filter(DERIVED_STATUS_DESC == "Arrived") %>%
+  filter(TO_DATE(date_start_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
+  # filter(TO_DATE(date_end_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
+  group_by(Campus, Appt.Year, Appt.MonNum) %>%
+  summarise(total = n()) %>%
+  collect() %>%
+  mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+  mutate(Appt.Year = as.character(Appt.Year))
+
+
+# Merge with radiology and rad onc monthly volume
+vol_trending_downtown <- bind_rows(vol_trending_downtown, rad_radOnc_data)
+vol_trending_downtown <- vol_trending_downtown %>%
+  filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>%
+  mutate(Campus = "MS Downtown") %>%
+  group_by(Campus, Appt.Year, Appt.Month) %>%
+  summarise(total = sum(total)) %>%
+  pivot_wider(names_from = Appt.Year,
+              values_from = total) %>%
+  # mutate(target_5_perc = round(`2022`*1.05)) %>%
+  arrange(factor(Appt.Month, levels = monthOptions)) %>%
+  arrange(Campus) %>%
+  mutate(perc_change = round(((`2024` - `2023`)/`2023`)*100, 0))
+
+
+# Output Graphs ------------------------
+map(unique(vol_trending_downtown$Campus), function(x){
+highchart() %>%
+  hc_yAxis_multiples(
+    list(title = list(text = "Total Visits"), lineWidth = 3, min = 0),
+    list(title = list(text = "% Change from Prior Year"), min = -50,max=200,
+           labels = list(format = '{value}%'),
+           showLastLabel = FALSE, opposite = TRUE)
+  ) %>%
+  hc_xAxis(title = list(text = ""),
+           categories = (vol_trending_downtown %>% filter(Campus == x))$Appt.Month,
+           type = "datetime",
+           labels = list(format = '{value:%m/%d}')
+           # dateTimeLabelFormats = list(month = '%Y-%m')
+           ) %>%
+  hc_add_series(name   = "2022 Total Visits",
+                data   = (vol_trending_downtown %>% filter(Campus == x))$`2022`,
+                # type = 'column',
+                # color = '#a5a7a5'
+                marker = list(enabled= TRUE),
+                color='#a5a7a5',
+                lineWidth=3,
+                lineColor='#a5a7a5'
+                ) %>%
+  hc_add_series(name = "2023 Total Visits",
+                data   = (vol_trending_downtown %>% filter(Campus == x))$`2023`,
+                marker = list(enabled= TRUE),
+                color='#212070',
+                lineWidth=3,
+                lineColor='#212070'
+                ) %>%
+  hc_add_series(name = "% Change from Prior Year",
+                data = (vol_trending_downtown %>% filter(Campus == x))$perc_change,
+                type = "column", yAxis = 1,
+                                zones = list(list(value = 0,
+                                  color = 'red')),
+                color='#00b800',
+                # lineColor='#d80b8c',
+                dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
+  hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
+    hc_title(text = paste0(x, " - Visit Volume Variance"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+    hc_subtitle(text = paste0("Includes MSUS, MSDMG, and MSBI <br>","Includes Radiology and Rad Onc visits up to ",radiology_date,
+                              "<br> Based on visits from ",date_start," to ",date_end),
+              align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
+    hc_tooltip(shared = TRUE, borderColor = "black")
+  }) %>%
+  hw_grid(ncol = 2, rowheight = 450) %>% htmltools::browsable()
+
+
+rm(vol_trending)
+rm(vol_trending_downtown)
+invisible(gc())
+```
+
+
+### 3. New Patient Ratio Trending
+```{r New Patient Volume Trending by Site, echo = FALSE, warning = FALSE, message = FALSE}
+
+# Format Data ------------------------------
+new_vol <- scheduling_data %>%
+  filter(DERIVED_STATUS_DESC == "Arrived") %>%
+  filter(TO_DATE(date_start_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, LOS_NAME) %>%
+  summarise(total = n()) %>%
+  collect() %>%
+  mutate(New.PT3 = ifelse(str_detect(LOS_NAME, "NEW|INITIAL"), "New", "Established"))
+
+
+new_vol_trending <- new_vol %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, New.PT3) %>%
+  summarise(total = n()) %>%
+  pivot_wider(names_from = New.PT3,
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(total_vol = `New` + `Established`,
+         new_perc = round((New/(total_vol))*100,0)) %>%
+  mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+  mutate(Appt.Year = as.character(Appt.Year)) %>%
+  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+
+# new_vol_trending <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/new_vol_trending.rds"))
+
+  
+# Output Graphs -----------------------------
+map(unique(new_vol_trending$Campus), function(x){
+highchart() %>%
+  hc_yAxis_multiples(
+    list(title = list(text = "Total Visits"), lineWidth = 3),
+    list(title = list(text = "% of New Visits"), labels = list(format = '{value}%'),
+         showLastLabel = FALSE, opposite = TRUE)
+  ) %>%
+  hc_xAxis(title = list(text = ""),
+           # categories = (new_vol_trending %>% filter(Campus == x))$Appt.MonthYear,
+           categories = new_vol_trending$Appt.MonthYear,
+           type = "datetime",
+           labels = list(format = '{value:%m/%d}')
+           # dateTimeLabelFormats = list(month = '%Y-%m')
+           ) %>%
+  hc_add_series(name = "Total Visits",
+                data = (new_vol_trending %>% filter(Campus == x))$total_vol,
+                type = 'column',
+                color='#212070',
+                dataLabels = list(enabled = TRUE, format='{point.y}')) %>%
+  hc_add_series(name = "% New Visits",
+                data = (new_vol_trending %>% filter(Campus == x))$new_perc,
+                type = "line", yAxis = 1,
+                color='#d80b8c',
+                lineColor='#d80b8c',
+                dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
+  hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
+  hc_title(text = paste0(x, " - % New Visits"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+  hc_subtitle(text = paste0("Excludes Radiology and Rad Onc visits <br>", "Based on visits from 2023-01-01"," to ",date_end),
+              align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
+  hc_tooltip(shared = TRUE, borderColor = "black")
+}) %>%
+  hw_grid(ncol = 2, rowheight = 400) %>% htmltools::browsable()
+```
+
+--------------------------------------------------------------------------------
+```{r New Patient Volume Trending Summarized, echo = FALSE, warning = FALSE, message = FALSE}
+
+# Format Data ------------------------------
+new_vol_trending_downtown <- new_vol %>%
+  filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>%
+  mutate(Campus = "MS Downtown") %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, New.PT3) %>%
+  summarise(total = n()) %>%
+  pivot_wider(names_from = New.PT3,
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(total_vol = `New` + `Established`,
+         new_perc = round((New/(total_vol))*100,0)) %>%
+  mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+  mutate(Appt.Year = as.character(Appt.Year)) %>%
+  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+
+# new_vol_trending_downtown <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/new_vol_trending_downtown.rds"))
+
+
+# Output Graphs ------------------------------
+map(unique(new_vol_trending_downtown$Campus), function(x){
+highchart() %>%
+  hc_yAxis_multiples(
+    list(title = list(text = "Total Visits"), lineWidth = 3),
+    list(title = list(text = "% of New Visits"), labels = list(format = '{value}%'),
+         showLastLabel = FALSE, opposite = TRUE)
+  ) %>%
+  hc_xAxis(title = list(text = ""),
+           # categories = (new_vol_trending_downtown %>% filter(Campus == x))$Appt.MonthYear,
+           categories = new_vol_trending_downtown$Appt.MonthYear,
+           type = "datetime",
+           labels = list(format = '{value:%m/%d}')
+           # dateTimeLabelFormats = list(month = '%Y-%m')
+           ) %>%
+  hc_add_series(name = "Total Visits",
+                data = (new_vol_trending_downtown %>% filter(Campus == x))$total_vol,
+                type = 'column',
+                color='#212070',
+                dataLabels = list(enabled = TRUE, format='{point.y}')) %>%
+  hc_add_series(name = "% New Visits",
+                data = (new_vol_trending_downtown %>% filter(Campus == x))$new_perc,
+                type = "line", yAxis = 1,
+                color='#d80b8c',
+                lineColor='#d80b8c',
+                dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
+  hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
+  hc_title(text = paste0(x, " - % New Visits"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+  hc_subtitle(text = paste0("Excludes Radiology and Rad Onc visits <br>", "Based on visits from 2023-01-01"," to ",date_end),
+              align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
+  hc_tooltip(shared = TRUE, borderColor = "black")
+}) %>%
+  hw_grid(ncol = 2, rowheight = 450) %>% htmltools::browsable()
+
+invisible(gc())
+```
+
+### 5. Hand Hygiene Trending
+```{r Hand Hygiene Metric Trending by Site, fig.width=12, fig.height = 5, fig.align = 'center', echo = FALSE, warning = FALSE, message = FALSE}
+
+hh_site <- hh_data_merged %>%
+  mutate(Month = format(as.Date(date, format="%Y-%m-%d"), "%Y-%m")) %>%
+  filter(date >= date_start & date <= Sys.Date())
+
+
+hh_site <- hh_site %>%
+  filter(!is.na(unit)) %>%
+  group_by(site, Month) %>%
+  summarise(worker___1 = sum(worker___1),
+            worker___2 = sum(worker___2),
+            worker___3 = sum(worker___3),
+            provider_hands_bef = sum(provider_hands_bef),
+            provider_hands_aft = sum(provider_hands_aft),
+            nurse_hands_bef = sum(nurse_hands_bef),
+            nurse_hands_aft = sum(nurse_hands_aft),
+            mt_hands_bef = sum(mt_hands_bef),
+            mt_hands_aft = sum(mt_hands_aft))
+
+hh_site <- hh_site %>%
+  group_by(site, Month) %>%
+  mutate(total_obs = sum(worker___1,worker___2,worker___3),
+         total_comp = round((sum(max(provider_hands_bef,provider_hands_aft),
+                          max(nurse_hands_bef, nurse_hands_aft),
+                          max(mt_hands_bef, mt_hands_aft))/total_obs)*100)) %>%
+  dplyr::select(site, Month, total_obs, total_comp)
+
+# network <- data.frame(site = "NETWORK",
+#                       Month = "2023-04",
+#                       total_obs = 0,
+#                       total_comp = 0)
+# 
+# msw <- data.frame(site = "MSW",
+#                       Month = "2023-05",
+#                       total_obs = 0,
+#                       total_comp = 0)
+
+# msdfp <- data.frame(site = "MSDFP",
+#                       Month = "2023-04",
+#                       total_obs = 0,
+#                       total_comp = 0)
+
+# hh_site <- bind_rows(hh_site, network, msw, msdfp)
+
+hh_site <- hh_site %>%
+  arrange(site, Month)
+
+map(unique(hh_site$site), function(x){
+
+    highchart() %>%
+  hc_yAxis_multiples(
+    list(title = list(text = "Total Observations"), lineWidth = 3),
+    list(title = list(text = "% Compliance"), labels = list(format = '{value}%'),
+         showLastLabel = FALSE, opposite = TRUE)
+  ) %>%
+  hc_xAxis(title = list(text = ""),
+           categories =(hh_site %>% filter(site == x))$Month,
+           # type = "datetime",
+           # labels = list(format = '{value:%m/%d}')
+           dateTimeLabelFormats = list(month = '%Y-%m')
+           ) %>%
+  hc_add_series(name = "Total Observations Submitted",
+                data = (hh_site %>% filter(site == x))$total_obs,
+                type = 'column',
+                color='#00aeef',
+                dataLabels = list(enabled = TRUE, format='{point.y}')) %>%
+  hc_add_series(name = "% Observations Complied",
+                data = (hh_site %>% filter(site == x))$total_comp,
+                type = "line", yAxis = 1,
+                color='#d80b8c',
+                lineColor='#d80b8c',
+                dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
+  hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
+  hc_title(text = paste0(x, " - Hand Hygiene Compliance %"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+  # hc_subtitle(text = paste0("Based on visits from ",date_start," to ",date_end),
+  #             align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
+  hc_tooltip(shared = TRUE, borderColor = "black")
+}) %>%
+  hw_grid(ncol = 2, rowheight = 400) %>% htmltools::browsable()
+  
+  
+invisible(gc())
+
+```
+
+
+--------------------------------------------------------------------------------
+```{r Hand Hygiene Trending Summarized, echo = FALSE, warning = FALSE, message = FALSE}
+
+hh_downtown <- hh_data_merged %>%
+  mutate(Month = format(as.Date(date, format="%Y-%m-%d"), "%Y-%m")) %>%
+  filter(date >= date_start & date <= Sys.Date())
+
+hh_downtown <- hh_downtown %>%
+  filter(unit != "NULL") %>%
+  filter(site %in% c("MSUS","MSDMG","MSBI")) %>%
+  mutate(site = "MS Downtown") %>%
+  group_by(site, Month) %>%
+  summarise(worker___1 = sum(worker___1),
+            worker___2 = sum(worker___2),
+            worker___3 = sum(worker___3),
+            provider_hands_bef = sum(provider_hands_bef),
+            provider_hands_aft = sum(provider_hands_aft),
+            nurse_hands_bef = sum(nurse_hands_bef),
+            nurse_hands_aft = sum(nurse_hands_aft),
+            mt_hands_bef = sum(mt_hands_bef),
+            mt_hands_aft = sum(mt_hands_aft))
+
+hh_downtown <- hh_downtown %>%
+  group_by(site, Month) %>%
+  mutate(total_obs = sum(worker___1,worker___2,worker___3),
+         total_comp = round((sum(min(provider_hands_bef,provider_hands_aft),
+                          min(nurse_hands_bef, nurse_hands_aft),
+                          min(mt_hands_bef, mt_hands_aft))/total_obs)*100)) %>%
+  dplyr::select(site, Month, total_obs, total_comp)
+
+map(unique(hh_downtown$site), function(x){
+
+  highchart() %>%
+  hc_yAxis_multiples(
+    list(title = list(text = "Total Observations"), lineWidth = 3),
+    list(title = list(text = "% Compliance"), labels = list(format = '{value}%'),
+         showLastLabel = FALSE, opposite = TRUE)
+  ) %>%
+  hc_xAxis(title = list(text = ""),
+           categories =(hh_downtown %>% filter(site == x))$Month,
+           # type = "datetime",
+           # labels = list(format = '{value:%m/%d}')
+           dateTimeLabelFormats = list(month = '%Y-%m')
+           ) %>%
+  hc_add_series(name = "Total Observations Submitted",
+                data = (hh_downtown %>% filter(site == x))$total_obs,
+                type = 'column',
+                color='#00aeef',
+                dataLabels = list(enabled = TRUE, format='{point.y}')) %>%
+  hc_add_series(name = "% Observations Complied",
+                data = (hh_downtown %>% filter(site == x))$total_comp,
+                type = "line", yAxis = 1,
+                color='#d80b8c',
+                lineColor='#d80b8c',
+                dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
+  hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
+  hc_title(text = paste0(x, " - Hand Hygiene Compliance %"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+  # hc_subtitle(text = paste0("Based on visits from ",date_start," to ",date_end),
+  #             align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
+  hc_tooltip(shared = TRUE, borderColor = "black")
+}) %>%
+  hw_grid(ncol = 2, rowheight = 400) %>% htmltools::browsable()
+invisible(gc())
+```
+
+
+
