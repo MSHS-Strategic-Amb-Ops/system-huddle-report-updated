@@ -297,6 +297,7 @@ prior_year <- year(Sys.Date())-1
 date_start <- as.Date(paste0(year(Sys.Date())-1,"-01-01"))
 
 date_data <- access_raw_tbl %>%
+  filter(DERIVED_STATUS_DESC == "Arrived") %>%
   group_by(CONTACT_DATE) %>%
   summarise(total = n()) %>%
   collect()
