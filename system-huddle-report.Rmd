@@ -276,7 +276,14 @@ scale_fill_MountSinai <- function(palette = "all", discrete = TRUE, reverse = FA
 conn1 <- dbPool(drv = odbc(), dsn = "OAO Cloud DB SoYoun", timeout = 30)
 
 access_raw_tbl <- tbl(conn1, "MV_DM_PATIENT_ACCESS")
-                      
+radiology_tbl <- tbl(conn1, "RADIOLOGY_DATA")
+rad_onc_tbl <- tbl(conn1, "RAD_ONC_DATA")
+radiology_site_tbl <- tbl(conn1, "RADIOLOGY_SITE_MAPPING")
+missing_enc_dept_tbl <- tbl(conn1, "OPEN_ENC_EXCLUSION_DEPT")
+missing_enc_visit_tbl <- tbl(conn1, "OPEN_ENC_EXCLUSION_VISIT")
+missing_enc_resource_tbl <- tbl(conn1, "OPEN_ENC_EXCLUSION_RESOURCE")
+hh_crosswalk_tbl <- tbl(conn1, "HH_CROSSWALK") 
+
 ```
 
 
@@ -338,8 +345,8 @@ hh_data_comp_raw_pt_entry <- as.data.frame(hh_data_comp_raw_pt_entry)
 
 
 # Import HH Data Mapping ------------------
-hh_crosswalk <- as.data.frame(read_csv("/nfs/data/Applications/Ambulatory/hh_crosswalk.csv"))
-# hh_crosswalk <- as.data.frame(read_csv(file.choose()))
+# hh_crosswalk <- as.data.frame(read_csv("/nfs/data/Applications/Ambulatory/hh_crosswalk.csv"))
+hh_crosswalk <- hh_crosswalk_tbl %>% collect()
  
 ```
 
@@ -347,15 +354,14 @@ hh_crosswalk <- as.data.frame(read_csv("/nfs/data/Applications/Ambulatory/hh_cro
 ```{r Radiology and Rad Onc Data, echo = FALSE, warning = FALSE, message = FALSE}
 
 # Import Radiology and Rad Onc Data -------------------
-rad_onc_data_raw <- as.data.frame(read.csv("/nfs/data/Applications/Ambulatory/Rad_Onc_Data.csv"))
-radiology_data_raw <- as.data.frame(read.csv("/nfs/data/Applications/Ambulatory/Radiology_Data.csv"))
-radiology_ref <- as.data.frame(read.csv("/nfs/data/Applications/Ambulatory/Radiology_Site_Mapping.csv"))
+# rad_onc_data_raw <- as.data.frame(read.csv("/nfs/data/Applications/Ambulatory/Rad_Onc_Data.csv"))
+# radiology_data_raw <- as.data.frame(read.csv("/nfs/data/Applications/Ambulatory/Radiology_Data.csv"))
+# radiology_ref <- as.data.frame(read.csv("/nfs/data/Applications/Ambulatory/Radiology_Site_Mapping.csv"))
 
 
-## Import Locally -------------------------------------
-# rad_onc_data_raw <- as.data.frame(read.csv("Rad_Onc_Data.csv"))
-# radiology_data_raw <- as.data.frame(read.csv("Radiology_Data.csv"))
-# radiology_ref <- as.data.frame(read.csv("Radiology_Site_Mapping.csv"))
+rad_onc_data_raw <- rad_onc_tbl %>% collect()
+radiology_data_raw <- radiology_tbl %>% collect()
+radiology_ref <- radiology_site_tbl %>% collect()
 
 
 # Process Radiology + Rad Onc Data --------------------
@@ -555,17 +561,18 @@ ________________________________________________________________________________
 ```{r Open Encounters Metric Trending by Site 3, fig.width=12, fig.height = 5, fig.align = 'center', echo = FALSE, warning = FALSE, message = FALSE}
 
 # EPIC Open Encounters Exclusion Criteria ---------------------------------
-missing_exc_dept <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_dept.xlsx")
-missing_exc_resource <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_res.xlsx")
-missing_exc_visitType <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_visit.xlsx")
+# missing_exc_dept <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_dept.xlsx")
+# missing_exc_resource <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_res.xlsx")
+# missing_exc_visitType <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_visit.xlsx")
 
-# missing_exc_dept <- read_excel("open_encounters_exclusion_dept.xlsx")
-# missing_exc_resource <- read_excel("open_encounters_exclusion_res.xlsx")
-# missing_exc_visitType <- read_excel("open_encounters_exclusion_visit.xlsx")
+missing_exc_dept <- missing_enc_dept_tbl %>% collect()
+missing_exc_resource <- missing_enc_resource_tbl %>% collect()
+missing_exc_visitType <- missing_enc_visit_tbl %>% collect()
 
 exc_depts <- unique(missing_exc_dept$DEPARTMENT)
 exc_providers <- unique(missing_exc_resource$PROVIDER)
-
+exc_prc_name <- unique(missing_exc_visitType$PRC_NAME)
+exc_prc_id <- unique(missing_exc_visitType$PRC_ID)
 
 missing_chg_cutOff <- paste0(format(as.Date(missing_chg_cutOff), "%Y-%m-%d"), " 00:00:00")
 
@@ -576,13 +583,15 @@ missing_chg_data <- scheduling_data %>%
   filter(VISIT_PROV_STAFF_RESOURCE_C == 1) %>%
   filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= APPT_DTTM) %>%
   mutate(clo.5days = ifelse(open.days <= 5, 'YES', 'NO')) %>%
-  group_by(Campus, DEPARTMENT_NAME, Provider, PRC_NAME, Appt.Year, Appt.MonNum, enc.status, clo.5days) %>%
+  group_by(Campus, DEPARTMENT_NAME, Provider, PRC_NAME, PRC_ID, Appt.Year, Appt.MonNum, enc.status, clo.5days) %>%
   summarise(total = n()) %>%
   collect()
   
 missing_chg_data <- missing_chg_data %>% 
   filter(DEPARTMENT_NAME %!in% exc_depts) %>%
   filter(Provider %!in% exc_providers) %>%
+  filter(PRC_NAME %!in% exc_prc_name) %>%
+  filter(PRC_ID %!in% exc_prc_id) %>%
   filter(!str_detect(PRC_NAME, "ECHO|SOCIAL|NURSE|NUTRITION|LAB|TREATMENT")) %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Year = as.character(Appt.Year)) %>%
@@ -1141,5 +1150,356 @@ map(unique(hh_downtown$site), function(x){
 invisible(gc())
 ```
 
+## MSHS
+### 1. MSHS Open Encounters
+```{r MSHS Unlocked Notes Metrics, echo = FALSE, warning = FALSE, message = FALSE}
+missing_ytd_data <-scheduling_data %>%
+  filter(Appt.Year == todays_year) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived") %>%
+  filter(VISIT_PROV_STAFF_RESOURCE_C == 1) %>%
+  filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= APPT_DTTM) %>%
+  mutate(clo.5days = ifelse(open.days <= 5, 'YES', 'NO')) %>%
+  collect()
+
+missing_ytd_data <- missing_ytd_data %>% 
+  filter(DEPARTMENT_NAME %!in% exc_depts) %>%
+  filter(Provider %!in% exc_providers) %>%
+  filter(PRC_NAME %!in% exc_prc_name) %>%
+  filter(PRC_ID %!in% exc_prc_id) %>%
+  filter(!str_detect(PRC_NAME, "ECHO|SOCIAL|NURSE|NUTRITION|LAB|TREATMENT")) %>%
+  mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+  mutate(Appt.Year = as.character(Appt.Year)) %>%
+  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+
+# missing_ytd_data <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_ytd_data.rds")) %>%
+#   filter(Appt.Year == todays_year) 
+
+# Closed Encounters YTD
+closed_ytd_mshs <- missing_ytd_data %>%
+  filter(enc.status == "CLOSED") %>%
+  group_by(Campus) %>%
+  summarise(clo.count = n())
+closed_3days_mshs <- missing_ytd_data %>%
+  filter(enc.status == "CLOSED") %>%
+  filter(open.days <=3) %>%
+  group_by(Campus) %>%
+  summarise(clo.3days = n())
+closed_5days_mshs <- missing_ytd_data %>%
+  filter(enc.status == "CLOSED") %>%
+  filter(open.days <=5) %>%
+  group_by(Campus) %>%
+  summarise(clo.5days = n())
+# Open Encounters YTD
+open_ytd_mshs <- missing_ytd_data %>%
+  filter(enc.status == "OPEN") %>%
+  group_by(Campus) %>%
+  summarise(open.count = n(),
+            enc.open.time = paste0(median(open.days), " days"))
+open_3days_mshs <- missing_ytd_data %>%
+  filter(enc.status == "OPEN") %>%
+  filter(open.days >3) %>%
+  group_by(Campus) %>%
+  summarise(open.3days = n())
+open_5days_mshs <- missing_ytd_data %>%
+  filter(enc.status == "OPEN") %>%
+  filter(open.days >5) %>%
+  group_by(Campus) %>%
+  summarise(open.5days = n())
+# rm(missing_ytd_data)
+
+missing_chg_ytd_mshs <- Reduce(function(x, y) merge(x, y, all=TRUE), list(closed_ytd_mshs, closed_3days_mshs, closed_5days_mshs, open_ytd_mshs, open_3days_mshs, open_5days_mshs))
+missing_chg_ytd_mshs <- missing_chg_ytd_mshs %>%
+  mutate(total.count = clo.count + open.count,
+         closed.3days.perc = percent(clo.3days/total.count,0),
+         closed.5days.perc = percent(clo.5days/total.count,0),
+         open.3days.perc = percent(open.3days/open.count,0),
+         open.5days.perc = percent(open.5days/open.count,0)) %>%
+  dplyr::select(Campus, total.count, closed.3days.perc, closed.5days.perc, open.count, enc.open.time, open.3days.perc, open.5days.perc)
+col_names <- c("Site", paste0(todays_year," YTD Total Encounters"), "% of Encounters Closed <=3 Days", "% of Encounters Closed <=5 Days",
+               paste0(todays_year, " YTD Open Encounters"), "Median Open Encounter Time",
+               "% of Open Encounters >3 Days", "% of Open Encounters >5 Days")
+header_above <- c("title" = length(missing_chg_ytd_mshs))
+names(header_above) <- paste0("MSHS ",todays_year," YTD Open Encounters")
+header_above_2 <- c("title" = length(missing_chg_ytd_mshs))
+names(header_above_2) <- paste0("Opened Encounters from ",
+                              min(missing_ytd_data$Appt.DateYear)," to ",missing_chg_cutOff)
+missing_chg_ytd_mshs %>%
+  # select(everything()) %>%
+    # mutate(open.perc = color_tile("lightpink","red")(open.perc),
+    #      open.3days.perc = color_tile("lightpink","red")(open.3days.perc),
+    #      open.5days.perc = color_tile("lightpink","red")(open.5days.perc)) %>%
+  mutate_if(is.numeric, prettyNum, big.mark = ',') %>%
+  # mutate_if(str_detect("%"), function(x) {
+  # cell_spec(color = ifelse(str_detect("-", "#ff3300", "#00b800")))})
+  kable(escape = F, align = c("r",rep(c("c"),length(missing_chg_ytd_mshs)-1)),
+        col.names = col_names) %>%
+  kable_styling(bootstrap_options = "hover", full_width = FALSE, position = "center", row_label_position = "c", font_size = 14) %>%
+  add_header_above(c(" ", "Total Encounters" = 3,  "Open Encounters" = 4), background = c("white","#221f72","#00aeef"), color = "white", font_size = 14) %>%
+  add_header_above(header_above_2, background = "white", color = "black", font_size = 16, bold = T, align = "c", italic = T) %>%
+  add_header_above(header_above, background = "white", color = "black", font_size = 22, bold = T, align = "c", line = FALSE) %>%
+  column_spec(2:4, background = "#EBEBF9", width = "150px") %>%
+  column_spec(5:8, background = "#E6F8FF", width = "150px") %>%
+  column_spec(1, width = "200px") %>%
+  column_spec(c(3:4), color = "#00b800", bold = T) %>%
+  column_spec(c(7:8), color = "#ff3300", bold = T) %>%
+  add_footnote(c("*Includes Epic provider visits only; excludes NURSE, SOCIAL WORK, TREATMENT, LAB, and ECHO visits.")) 
+
+invisible(gc())
+```
 
 
+```{r Site Epic Open Encounters, echo = FALSE, warning = FALSE, message = FALSE}
+# Epic unlocked notes YTD
+open_encounters_site <- function(site){
+
+  # site <- "MSUS"
+
+# Closed Encounters YTD
+closed_ytd_site <- missing_ytd_data %>%
+  filter(Campus == site) %>%
+  filter(enc.status == "CLOSED") %>%
+  group_by(Campus) %>%
+  summarise(clo.count = n())
+closed_3days_site <- missing_ytd_data %>%
+  filter(Campus == site) %>%
+  filter(enc.status == "CLOSED") %>%
+  filter(open.days <=3) %>%
+  group_by(Campus) %>%
+  summarise(clo.3days = n())
+closed_5days_site <- missing_ytd_data %>%
+  filter(Campus == site) %>%
+  filter(enc.status == "CLOSED") %>%
+  filter(open.days <=5) %>%
+  group_by(Campus) %>%
+  summarise(clo.5days = n())
+# Open Encounters YTD
+open_ytd_site <- missing_ytd_data %>%
+  filter(Campus == site) %>%
+  filter(enc.status == "OPEN") %>%
+  group_by(Campus) %>%
+  summarise(open.count = n(),
+            enc.open.time = paste0(median(open.days), " days"))
+open_3days_site <- missing_ytd_data %>%
+  filter(Campus == site) %>%
+  filter(enc.status == "OPEN") %>%
+  filter(open.days >3) %>%
+  group_by(Campus) %>%
+  summarise(open.3days = n())
+open_5days_site <- missing_ytd_data %>%
+  filter(Campus == site) %>%
+  filter(enc.status == "OPEN") %>%
+  filter(open.days >5) %>%
+  group_by(Campus) %>%
+  summarise(open.5days = n())
+# rm(missing_ytd_data)
+missing_chg_ytd_site <- Reduce(function(x, y) merge(x, y, all=TRUE), list(closed_ytd_site, closed_3days_site, closed_5days_site, open_ytd_site, open_3days_site, open_5days_site))
+missing_chg_ytd_site[is.na(missing_chg_ytd_site)] <- 0
+missing_chg_ytd_site <- missing_chg_ytd_site %>%
+  mutate(total.count = clo.count + open.count,
+         closed.3days.perc = percent(clo.3days/total.count,0),
+         closed.5days.perc = percent(clo.5days/total.count,0),
+         open.3days.perc = percent(open.3days/open.count,0),
+         open.5days.perc = percent(open.5days/open.count,0)) %>%
+  dplyr::select(Campus, total.count, closed.3days.perc, closed.5days.perc, open.count, enc.open.time, open.3days.perc, open.5days.perc)
+col_names <- c("Site",paste0(todays_year," YTD Total Encounters"), "% of Encounters Closed <=3 Days", "% of Encounters Closed <=5 Days",
+               paste0(todays_year, " YTD Open Encounters"), "Median Open Encounter Time",
+               "% of Open Encounters >3 Days", "% of Open Encounters >5 Days")
+header_above <- c("title" = length(missing_chg_ytd_site))
+names(header_above) <- paste0(site," ",todays_year," YTD Open Encounters")
+header_above_2 <- c("title" = length(missing_chg_ytd_site))
+names(header_above_2) <- paste0("Opened Encounters from ",
+                              min(missing_ytd_data$Appt.DateYear)," to ",as.Date(missing_chg_cutOff))
+missing_chg_ytd_site %>%
+  dplyr::select(everything()) %>%
+    # mutate(open.perc = color_tile("lightpink","red")(open.perc),
+    #      open.3days.perc = color_tile("lightpink","red")(open.3days.perc),
+    #      open.5days.perc = color_tile("lightpink","red")(open.5days.perc)) %>%
+  mutate_if(is.numeric, prettyNum, big.mark = ',') %>%
+  # mutate_if(str_detect("%"), function(x) {
+  # cell_spec(color = ifelse(str_detect("-", "#ff3300", "#00b800")))})
+  kable(escape = F, align = c("r",rep(c("c"),length(missing_chg_ytd_site)-1)),
+        col.names = col_names) %>%
+  kable_styling(bootstrap_options = "hover", full_width = FALSE, position = "center", row_label_position = "c", font_size = 14) %>%
+  add_header_above(c(" ", "Total Encounters" = 3,  "Open Encounters" = 4), background = c("white","#221f72","#00aeef"), color = "white", font_size = 14) %>%
+  add_header_above(header_above_2, background = "white", color = "black", font_size = 16, bold = T, align = "c", italic = T) %>%
+  add_header_above(header_above, background = "white", color = "black", font_size = 22, bold = T, align = "c", line = FALSE) %>%
+  column_spec(2:4, background = "#EBEBF9", width = "150px") %>%
+  column_spec(5:8, background = "#E6F8FF", width = "150px") %>%
+  column_spec(1, width = "200px") %>%
+  column_spec(c(3:4), color = "#00b800", bold = T) %>%
+  column_spec(c(7:8), color = "red", bold = T) %>%
+  add_footnote(c("*Includes Epic provider visits only; excludes NURSE, SOCIAL WORK, TREATMENT, LAB, and ECHO visits.")) 
+
+}
+```
+
+
+```{r Department Epic Open Encounters, echo = FALSE, warning = FALSE, message = FALSE}
+# Epic unlocked notes YTD
+open_encounters_dept <- function(site){
+
+  # site <- "MSM"
+# Closed Encounters YTD
+closed_ytd_dept <- missing_ytd_data %>%
+  filter(Campus == site) %>%
+  filter(enc.status == "CLOSED") %>%
+  group_by(DEPT_SPECIALTY_NAME, DEPARTMENT_NAME) %>%
+  summarise(clo.count = n())
+closed_3days_dept <- missing_ytd_data %>%
+  filter(Campus == site) %>%
+  filter(enc.status == "CLOSED") %>%
+  filter(open.days <=3) %>%
+  group_by(DEPT_SPECIALTY_NAME, DEPARTMENT_NAME) %>%
+  summarise(clo.3days = n())
+closed_5days_dept <- missing_ytd_data %>%
+  filter(Campus == site) %>%
+  filter(enc.status == "CLOSED") %>%
+  filter(open.days <=5) %>%
+  group_by(DEPT_SPECIALTY_NAME, DEPARTMENT_NAME) %>%
+  summarise(clo.5days = n())
+# Closed Encounters YTD
+open_ytd_dept <- missing_ytd_data %>%
+  filter(Campus == site) %>%
+  filter(ENC_CLOSED_CHARGE_STATUS == "OPEN") %>%
+  group_by(DEPT_SPECIALTY_NAME, DEPARTMENT_NAME) %>%
+  summarise(open.count = n(),
+            enc.open.time = paste0(median(open.days)," days"))
+open_3days_dept <- missing_ytd_data %>%
+  filter(Campus == site) %>%
+  filter(ENC_CLOSED_CHARGE_STATUS == "OPEN") %>%
+  filter(open.days >3) %>%
+  group_by(DEPT_SPECIALTY_NAME, DEPARTMENT_NAME) %>%
+  summarise(open.3days = n())
+open_5days_dept <- missing_ytd_data %>%
+  filter(Campus == site) %>%
+  filter(ENC_CLOSED_CHARGE_STATUS == "OPEN") %>%
+  filter(open.days >5) %>%
+  group_by(DEPT_SPECIALTY_NAME, DEPARTMENT_NAME) %>%
+  summarise(open.5days = n())
+missing_chg_ytd_dept <- Reduce(function(x, y) merge(x, y, all=TRUE), list(closed_ytd_dept, closed_3days_dept, closed_5days_dept, open_ytd_dept, open_3days_dept, open_5days_dept))
+missing_chg_ytd_dept[is.na(missing_chg_ytd_dept)] <- 0
+missing_chg_ytd_dept <- missing_chg_ytd_dept %>%
+  mutate(total.count = clo.count + open.count,
+         closed.3days.perc = percent(clo.3days/total.count,0),
+         closed.5days.perc = percent(clo.5days/total.count,0),
+         open.3days.perc = percent(open.3days/open.count,0),
+         open.5days.perc = percent(open.5days/open.count,0)) %>%
+  dplyr::select(DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, total.count, closed.3days.perc, closed.5days.perc, open.count, enc.open.time, open.3days.perc, open.5days.perc) %>%
+   mutate_all(., ~replace(., is.na(.), 0))
+col_names <- c("Department",paste0(todays_year," YTD Total Encounters"), "% of Encounters Closed <=3 Days", "% of Encounters Closed <=5 Days",
+               paste0(todays_year, " YTD Open Encounters"), "Median Open Encounter Time",
+               "% of Open Encounters >3 Days", "% of Open Encounters >5 Days")
+header_above <- c("title" = length(missing_chg_ytd_dept)-1)
+names(header_above) <- paste0(site," ",todays_year," YTD Open Encounters")
+header_above_2 <- c("title" = length(missing_chg_ytd_dept)-1)
+names(header_above_2) <- paste0("Opened Encounters from ",
+                              min(missing_ytd_data$Appt.DateYear)," to ",as.Date(missing_chg_cutOff))
+missing_chg_ytd_dept %>%
+  dplyr::select(-DEPT_SPECIALTY_NAME) %>%
+      # mutate(open.perc = color_tile("lightpink","red")(open.perc),
+      #    open.3days.perc = color_tile("lightpink","red")(open.3days.perc),
+      #    open.5days.perc = color_tile("lightpink","red")(open.5days.perc)) %>%
+  mutate_if(is.numeric, prettyNum, big.mark = ',') %>%
+  kable(escape = F, align = c("r","r",rep("c",7)),
+        col.names = col_names) %>%
+  kable_styling(bootstrap_options = "hover", full_width = FALSE, position = "center", row_label_position = "c", font_size = 14) %>%
+   add_header_above(c(" " = 1, "Total Encounters" = 3,  "Open Encounters" = 4), background = c("white","#221f72","#00aeef"), color = "white", font_size = 14) %>%
+  add_header_above(header_above_2, background = "white", color = "black", font_size = 16, bold = T, align = "c", italic = T) %>%
+  add_header_above(header_above, background = "white", color = "black", font_size = 22, bold = T, align = "c", line = F) %>%
+  column_spec(2:4, background = "#EBEBF9", width = "150px") %>%
+  column_spec(5:8, background = "#E6F8FF", width = "150px") %>%
+  column_spec(1, width = "400px") %>%
+  column_spec(c(3:4), color = "#00b800", bold = T) %>%
+  column_spec(c(7:8), color = "red", bold = T) %>%
+  pack_rows(index = table(missing_chg_ytd_dept$DEPT_SPECIALTY_NAME), label_row_css = "background-color: #dddedd; color: black;") %>%
+  add_footnote(c("*Includes Epic provider visits only; excludes NURSE, SOCIAL WORK, TREATMENT, LAB, and ECHO visits.")) 
+}
+```
+
+
+```{r Site Metrics Output, echo = FALSE, warning = FALSE, message = FALSE, results="asis"}
+# sites <- as.vector(unique(scheduling_data$Campus))
+sites <- as.vector(c("NETWORK","MSM","MSH-MSDFP","MSW","MSBI","MSUS","MSH- AMBULATORY CARE","MSDMG"))
+# missing_chg_sites <- as.vector(unique(missing_chg_data$Campus))
+# primary_care_sites <- as.vector(unique((time_to_appt_all %>% filter(Appt.Year == todays_year))$Campus))
+# primary_care_depts <- as.vector(unique((time_to_appt_all %>% filter(Appt.WeekNum == todays_week))$Campus))
+# hh_sites <- as.vector(hh_sites)
+# rm(scheduling_data)
+invisible(gc())
+# i <- "MSUS"
+for (i in sites) {
+  cat(" \n##", i,"\n")
+  cat(" \n###", paste0("1. ",i," Open Encounters"),"{.tabset .tabset-fade .tabset-pills}","\n")
+  cat(" \n####", "Site Total","\n")
+  print(open_encounters_site(site = i))
+  cat(" \n####", "Department Breakdown","\n")
+  print(open_encounters_dept(site = i))
+  # cat(" \n###", paste0("2. ",i," Volume"),"\n")
+  # # cat(" \n####", "By Site","\n")
+  # print(current_last_vol_site(site = i))
+  # print(current_same_vol_site(site = i))
+  # 
+  # if (i %in% primary_care_sites){
+  # cat(" \n###", paste0("3. ",i," Primary Care Access"),"\n")
+  # # cat(" \n####", "By Site","\n")
+  # print(current_last_wait_site(site = i))
+  # print(current_last_new_site(site = i))
+  # }
+  # # cat(" \n###", paste0("4. ",i," Operational Improvement - No Shows"),"\n")
+  # # # cat(" \n####", "By Site","\n")
+  # # print(current_last_noShow_site(site = i))
+  # if (i %in% hh_sites){
+  # cat(" \n###", paste0("5. ",i," Hand Hygiene"),"\n")
+  # # cat(" \n####", "By Site","\n")
+  # print(hh_comp_site(i))
+  # }
+  }
+# With Department Level Breakdown -----------------------------
+# for (i in sites) {
+#
+#   cat(" \n##", i,"\n")
+#
+#   if(i %in% missing_chg_sites){
+#   cat(" \n###", paste0("1. ",i," Epic Open Encounters"),"{.tabset .tabset-fade .tabset-pills}","\n")
+#   cat(" \n####", "By Site","\n")
+#   print(open_encounters_site(site = i))
+#   cat(" \n####", "By Department","\n")
+#   print(open_encounters_dept(site = i))
+#   }
+#
+#   cat(" \n###", paste0("2. ",i," Volume"),"{.tabset .tabset-fade .tabset-pills}","\n")
+#   cat(" \n####", "By Site","\n")
+#   print(current_last_vol_site(site = i))
+#   print(current_same_vol_site(site = i))
+#   cat(" \n####", "By Department","\n")
+#   print(current_last_vol_dept(site = i))
+#   print(current_same_vol_dept(site = i))
+#
+#   if(i %in% primary_care_sites){
+#     cat(" \n###", paste0("3. ",i," Primary Care Access"),"{.tabset .tabset-fade .tabset-pills}","\n")
+#     cat(" \n####", "By Site","\n")
+#     print(current_last_wait_site(site = i))
+#     if(i %in% primary_care_depts){
+#       cat(" \n####", "By Department","\n")
+#       print(current_last_wait_dept(site = i))
+#     }
+#   }
+#
+#   cat(" \n###", paste0("4. ",i," Operational Improvement - No Shows"),"{.tabset .tabset-fade .tabset-pills}","\n")
+#   cat(" \n####", "By Site","\n")
+#   print(current_last_noShow_site(site = i))
+#   cat(" \n####", "By Department","\n")
+#   print(current_last_noShow_dept(site = i))
+#
+#   if(i %in% hh_sites){
+#   cat(" \n###", paste0("5. ",i," Hand Hygiene"),"{.tabset .tabset-fade .tabset-pills}","\n")
+#   cat(" \n####", "By Site","\n")
+#   print(hh_comp_site(campus = i))
+#   cat(" \n####", "By Department","\n")
+#   print(hh_comp_dept(campus = i))
+#   }
+#
+#   }
+```
+_________________________________________________________________________________________________________________________________________________________________
+*End of Report.*
