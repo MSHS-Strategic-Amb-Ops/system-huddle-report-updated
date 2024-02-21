@@ -339,9 +339,12 @@ con_hh <- dbConnect(odbc(),
                     Port = 1433)
 hh_data_comp_raw <- dbGetQuery(con_hh, "SELECT * FROM qidm_dev.dbo.amb_hand_hygiene_comp")
 hh_data_comp_raw <- as.data.frame(hh_data_comp_raw)
+hh_data_comp_raw <- hh_data_comp_raw %>% distinct()
+
 
 hh_data_comp_raw_pt_entry <- dbGetQuery(con_hh, "SELECT * FROM qidm_dev.dbo.PT_AMB_HAND_HYGIENE_COMP")
 hh_data_comp_raw_pt_entry <- as.data.frame(hh_data_comp_raw_pt_entry)
+hh_data_comp_raw_pt_entry <- hh_data_comp_raw_pt_entry %>% distinct()
 
 
 # Import HH Data Mapping ------------------
