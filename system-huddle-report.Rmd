@@ -579,12 +579,11 @@ exc_prc_id <- unique(missing_exc_visitType$PRC_ID)
 
 missing_chg_cutOff <- paste0(format(as.Date(missing_chg_cutOff), "%Y-%m-%d"), " 00:00:00")
 
-
 missing_chg_data <- scheduling_data %>%
   filter(Appt.Year >= prior_year) %>%
   filter(DERIVED_STATUS_DESC == "Arrived") %>%
   filter(VISIT_PROV_STAFF_RESOURCE_C == 1) %>%
-  filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= APPT_DTTM) %>%
+  filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= TO_DATE(APPT_DTTM)) %>%
   mutate(clo.5days = ifelse(open.days <= 5, 'YES', 'NO')) %>%
   group_by(Campus, DEPARTMENT_NAME, Provider, PRC_NAME, PRC_ID, Appt.Year, Appt.MonNum, enc.status, clo.5days) %>%
   summarise(total = n()) %>%
@@ -602,8 +601,7 @@ missing_chg_data <- missing_chg_data %>%
 
 missing_chg_data_trend_5days <- missing_chg_data %>%
   group_by(Campus, Appt.Year, Appt.MonNum, Appt.MonthYear, enc.status, clo.5days) %>%
-  summarise(total = n()) %>%
-  collect() %>%
+  summarise(total = sum(total)) %>%
   group_by(Campus, Appt.Year, Appt.MonthYear) %>%
   mutate(total.enc = sum(total)) %>%
   pivot_wider(names_from = clo.5days,
@@ -617,10 +615,9 @@ missing_chg_data_trend_downtown_5days <- missing_chg_data %>%
   filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>%
   mutate(Campus = "MS Downtown") %>%
   group_by(Campus, Appt.MonthYear, enc.status, clo.5days) %>%
-  summarise(total = n()) %>%
+  summarise(total = sum(total)) %>%
   group_by(Campus, Appt.MonthYear) %>%
   mutate(total.enc = sum(total)) %>%
-  collect() %>%
   pivot_wider(names_from = clo.5days,
               values_from = total,
               values_fill = 0) %>%
