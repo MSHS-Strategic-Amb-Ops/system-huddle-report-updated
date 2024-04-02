@@ -614,7 +614,7 @@ missing_chg_data_trend_5days <- missing_chg_data %>%
 missing_chg_data_trend_downtown_5days <- missing_chg_data %>%
   filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>%
   mutate(Campus = "MS Downtown") %>%
-  group_by(Campus, Appt.MonthYear, enc.status, clo.5days) %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, Appt.MonthYear, enc.status, clo.5days) %>%
   summarise(total = sum(total)) %>%
   group_by(Campus, Appt.MonthYear) %>%
   mutate(total.enc = sum(total)) %>%
@@ -836,8 +836,8 @@ highchart() %>%
            labels = list(format = '{value:%m/%d}')
            # dateTimeLabelFormats = list(month = '%Y-%m')
            ) %>%
-  hc_add_series(name   = "2022 Total Visits",
-                data   = (vol_trending_downtown %>% filter(Campus == x))$`2022`,
+  hc_add_series(name   = "2023 Total Visits",
+                data   = (vol_trending_downtown %>% filter(Campus == x))$`2023`,
                 # type = 'column',
                 # color = '#a5a7a5'
                 marker = list(enabled= TRUE),
@@ -845,8 +845,8 @@ highchart() %>%
                 lineWidth=3,
                 lineColor='#a5a7a5'
                 ) %>%
-  hc_add_series(name = "2023 Total Visits",
-                data   = (vol_trending_downtown %>% filter(Campus == x))$`2023`,
+  hc_add_series(name = "2024 Total Visits",
+                data   = (vol_trending_downtown %>% filter(Campus == x))$`2024`,
                 marker = list(enabled= TRUE),
                 color='#212070',
                 lineWidth=3,
