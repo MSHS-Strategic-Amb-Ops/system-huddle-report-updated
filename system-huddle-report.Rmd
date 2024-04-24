@@ -412,7 +412,7 @@ rad_radOnc_data <- bind_rows(rad_onc_data_raw, radiology_data_raw)
 rad_radOnc_data <- rad_radOnc_data %>%
   mutate(Campus = toupper(Campus)) %>%
   filter(Appt.Year %in% c(prior_year, todays_year)) %>%
-  group_by(Campus, Appt.Year, Appt.Month) %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, Appt.Month) %>%
   summarise(total = sum(monthly_vol))
 
 
@@ -891,7 +891,7 @@ new_vol <- scheduling_data %>%
 
 new_vol_trending <- new_vol %>%
   group_by(Campus, Appt.Year, Appt.MonNum, New.PT3) %>%
-  summarise(total = n()) %>%
+  summarise(total = sum(total)) %>%
   pivot_wider(names_from = New.PT3,
               values_from = total,
               values_fill = 0) %>%
@@ -932,7 +932,7 @@ highchart() %>%
                 dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
   hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
   hc_title(text = paste0(x, " - % New Visits"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
-  hc_subtitle(text = paste0("Excludes Radiology and Rad Onc visits <br>", "Based on visits from 2023-01-01"," to ",date_end),
+  hc_subtitle(text = paste0("Excludes Radiology and Rad Onc visits <br>", "Based on arrived visits from 2023-01-01"," to ",date_end),
               align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
   hc_tooltip(shared = TRUE, borderColor = "black")
 }) %>%
@@ -947,7 +947,7 @@ new_vol_trending_downtown <- new_vol %>%
   filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>%
   mutate(Campus = "MS Downtown") %>%
   group_by(Campus, Appt.Year, Appt.MonNum, New.PT3) %>%
-  summarise(total = n()) %>%
+  summarise(total = sum(total)) %>%
   pivot_wider(names_from = New.PT3,
               values_from = total,
               values_fill = 0) %>%
@@ -988,7 +988,7 @@ highchart() %>%
                 dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
   hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
   hc_title(text = paste0(x, " - % New Visits"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
-  hc_subtitle(text = paste0("Excludes Radiology and Rad Onc visits <br>", "Based on visits from 2023-01-01"," to ",date_end),
+  hc_subtitle(text = paste0("Excludes Radiology and Rad Onc visits <br>", "Based on arrived visits from 2023-01-01"," to ",date_end),
               align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
   hc_tooltip(shared = TRUE, borderColor = "black")
 }) %>%
