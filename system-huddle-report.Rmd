@@ -303,13 +303,13 @@ prior_year <- year(Sys.Date())-1
 
 date_start <- as.Date(paste0(year(Sys.Date())-1,"-01-01"))
 
-date_data <- access_raw_tbl %>%
-  filter(DERIVED_STATUS_DESC == "Arrived") %>%
-  group_by(CONTACT_DATE) %>%
-  summarise(total = n()) %>%
-  collect()
+# date_data <- access_raw_tbl %>%
+#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
+#   group_by(CONTACT_DATE) %>%
+#   summarise(total = n()) %>%
+#   collect()
 
-date_end <- as.Date(max(date_data$CONTACT_DATE))
+date_end <- as.Date(Sys.Date()-1)
 
 date_start_formatted <- paste0(format(as.Date(date_start), "%Y-%m-%d"), " 00:00:00")
 date_end_formatted <- paste0(format(as.Date(date_end), "%Y-%m-%d"), " 00:00:00")
@@ -532,11 +532,11 @@ hh_data_merged <- hh_data_merged %>%
 scheduling_data <- access_raw_tbl %>%
   filter(!is.na(SITE)) %>%
   mutate(Campus = case_when(SITE == "MSDD" ~ "MSDMG",
-                            TRUE ~ SITE),
-         Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
+                            TRUE ~ SITE)) %>%
+  mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
                             DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC",
                             TRUE ~ Campus)) %>%
-  filter(!Campus %in% c("MSB", "MS NOW", "MSHP", "OTHER", "DUBIN", "RTC")) %>%
+  filter(!Campus %in% c("MSB", "MS NOW", "MSHP", "OTHER", "DUBIN", "RTC", "ONCOLOGY")) %>%
   mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
          Appt.Year = year(CONTACT_DATE),
          Appt.MonNum = month(CONTACT_DATE)) %>%
@@ -628,6 +628,157 @@ missing_chg_data_trend_downtown_5days <- missing_chg_data %>%
 # missing_chg_data_trend_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_5days.rds"))
 # missing_chg_data_trend_downtown_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_downtown_5days.rds"))
 
+
+```
+
+
+```{r}
+
+# # EPIC Open Encounters Exclusion Criteria ---------------------------------
+# # missing_exc_dept <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_dept.xlsx")
+# # missing_exc_resource <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_res.xlsx")
+# # missing_exc_visitType <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_visit.xlsx")
+# 
+# missing_exc_dept <- missing_enc_dept_tbl %>% collect()
+# missing_exc_resource <- missing_enc_resource_tbl %>% collect()
+# missing_exc_visitType <- missing_enc_visit_tbl %>% collect()
+# 
+# exc_depts <- unique(missing_exc_dept$DEPARTMENT)
+# exc_providers <- unique(missing_exc_resource$PROVIDER)
+# exc_prc_name <- unique(missing_exc_visitType$PRC_NAME)
+# exc_prc_id <- unique(missing_exc_visitType$PRC_ID)
+# 
+# start <- paste0(format(as.Date("2023-01-01"), "%Y-%m-%d"), " 00:00:00")
+# end <- missing_chg_cutOff
+# # end <- paste0(format(as.Date("2024-05-01"), "%Y-%m-%d"), " 00:00:00")
+# 
+# missing_chg_data <- scheduling_data %>%
+#   filter(Appt.Year >= prior_year) %>%
+#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
+#   filter(VISIT_PROV_STAFF_RESOURCE_C == 1) %>%
+#   filter(TO_DATE(start,"YYYY-MM-DD HH24:MI:SS") <= TO_DATE(APPT_DTTM)) %>%
+#   filter(TO_DATE(end,"YYYY-MM-DD HH24:MI:SS") >= TO_DATE(APPT_DTTM)) %>%
+#   # filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= TO_DATE(APPT_DTTM)) %>%
+#   # mutate(clo.5days = ifelse(open.days <= 5, 'YES', 'NO')) %>%
+#   # filter(enc.status == "OPEN") %>%
+#   dplyr::select(Campus, DEPARTMENT_NAME, DEP_RPT_GRP_ELEVEN, DEP_RPT_GRP_TWELVE,
+#                 Provider, NPI, PROV_ID,  VISIT_PROV_STAFF_RESOURCE_C, 
+#                 PAT_ENC_CSN_ID, MRN, PRC_NAME, PRC_ID, VISIT_TYPE, Appt.Year, Appt.MonNum, CONTACT_DATE, enc.status, open.days, Y_ENC_CLOSE_TIME) %>%
+#   # group_by(Campus, DEPARTMENT_NAME, Provider, PRC_NAME, PRC_ID, Appt.Year, Appt.MonNum, enc.status, open.days) %>%
+#   # summarise(total = n()) %>%
+#   collect()
+# 
+# data <- missing_chg_data 
+# 
+# # missing_chg_data <- data %>%
+# #   filter(DEPARTMENT_NAME %!in% exc_depts) %>%
+# #   filter(Provider %!in% exc_providers) %>%
+# #   filter(PRC_NAME %!in% exc_prc_name) %>%
+# #   filter(PRC_ID %!in% exc_prc_id) %>%
+# #   filter(!str_detect(PRC_NAME, "ECHO|SOCIAL|NURSE|NUTRITION|LAB|TREATMENT")) %>%
+# #   # filter(!str_detect(DEOARTMENT_NAME, "PHYSICAL|THERAPY|WTC|DENTAL|SOCIAL|NURSE|NUTRITION|LAB|TREATMENT")) %>%
+# #   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+# #   mutate(Appt.Year = as.character(Appt.Year)) %>%
+# #   mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+# 
+# missing_chg_data_filtered <- data %>%
+#   filter(DEPARTMENT_NAME %!in% exc_depts) %>%
+#   filter(Provider %!in% exc_providers) %>%
+#   filter(PRC_NAME %!in% exc_prc_name) %>%
+#   filter(PRC_ID %!in% exc_prc_id) %>%
+#   filter(!str_detect(PRC_NAME, "ECHO|SOCIAL|NURSE|NUTRITION|LAB|TREATMENT")) %>%
+#   filter(!str_detect(DEPARTMENT_NAME, "PHYSICAL|THERAPY|WTC|DENTAL|SOCIAL|NURSE|NUTRITION|LAB|TREATMENT")) %>%
+#   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+#   mutate(Appt.Year = as.character(Appt.Year)) %>%
+#   mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+# 
+# 
+# active_staff_tbl <- tbl(conn1, "EXT_ACTIVE_STAFF")
+# active_staff <- active_staff_tbl %>% collect()
+# 
+# conn2 <- dbConnect(odbc(), 
+#                   "Clarity_prod", 
+#                   uid = "kweons01" , 
+#                   pwd = "kweons01123$")
+# clarity_ser_tbl <- tbl(conn2, "CLARITY_SER")
+# clarity_ser <- clarity_ser_tbl %>% collect()
+# 
+# 
+# 
+# active_staff$med_staff <- "Yes"
+# 
+# missing_chg_data_filtered$med_staff <- active_staff$med_staff[match(missing_chg_data_filtered$NPI, active_staff$NPI)]
+# missing_chg_data_filtered$PROV_TYPE <- clarity_ser$PROV_TYPE[match(missing_chg_data_filtered$PROV_ID, clarity_ser$PROV_ID)]
+# 
+# open_encounters <- missing_chg_data_filtered %>%
+#   filter(enc.status == "OPEN") %>%
+#   group_by(Campus, DEPARTMENT_NAME, Provider, PROV_ID, NPI, PROV_TYPE, med_staff, VISIT_PROV_STAFF_RESOURCE_C, 
+#            enc.status, open.days) %>%
+#   summarise(total = n())
+# 
+# 
+# require(openxlsx)
+# write.xlsx(open_encounters, "EPIC Open Encounters_010123_052724_as of 053124.xlsx")
+# 
+# 
+# test <- missing_chg_data %>%
+#  filter(enc.status == "OPEN") %>%
+#   group_by(DEPARTMENT_NAME) %>%
+#   summarise(total = n())
+# 
+# 
+# cbo_open_encounters <- read_excel(file.choose())
+# cbo_open_encounters$in_professional <- "PB"
+# 
+# missing_chg_data$in_technical <- "TB"
+# 
+# cbo_open_encounters$in_technical <- missing_chg_data$in_technical[match(cbo_open_encounters$VISIT_ID, missing_chg_data$PAT_ENC_CSN_ID)]
+# missing_chg_data$in_professional <- cbo_open_encounters$in_professional[match( missing_chg_data$PAT_ENC_CSN_ID, cbo_open_encounters$VISIT_ID)]
+# 
+# 
+# check <- access_raw_tbl %>%
+#   filter(PAT_ENC_CSN_ID == "100155522932") %>%
+#   collect()
+# 
+# check2 <- scheduling_data %>%
+#   filter(PAT_ENC_CSN_ID == "100155522932") %>%
+#   collect()
+
+# # missing_chg_data_trend_5days <- missing_chg_data %>%
+# #   group_by(Campus, Appt.Year, Appt.MonNum, Appt.MonthYear, enc.status, open.days) %>%
+# #   summarise(total = sum(total)) %>%
+# #   group_by(Campus, Appt.Year, Appt.MonthYear) %>%
+# #   mutate(total.enc = sum(total)) %>%
+# #   pivot_wider(names_from = clo.5days,
+# #               values_from = total,
+# #               values_fill = 0) %>%
+# #   mutate(clo.5days.perc = round((YES/(total.enc))*100,0)) %>%
+# #   filter(enc.status == "CLOSED")
+#
+#
+# missing_chg_data_trend_downtown_5days <- missing_chg_data %>%
+#   filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>%
+#   mutate(Campus = "MS Downtown") %>%
+#   group_by(Campus, Appt.Year, Appt.MonNum, Appt.MonthYear, enc.status, clo.5days) %>%
+#   summarise(total = sum(total)) %>%
+#   group_by(Campus, Appt.MonthYear) %>%
+#   mutate(total.enc = sum(total)) %>%
+#   pivot_wider(names_from = clo.5days,
+#               values_from = total,
+#               values_fill = 0) %>%
+#   mutate(clo.5days.perc = round((YES/(total.enc))*100,0)) %>%
+#   filter(enc.status == "CLOSED")
+
+
+# missing_chg_data_trend_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_5days.rds"))
+# missing_chg_data_trend_downtown_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_downtown_5days.rds"))
+
+
+
+# missing_chg_data_trend_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_5days.rds"))
+# missing_chg_data_trend_downtown_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_downtown_5days.rds"))
+
+
 ```
 
 
@@ -710,6 +861,64 @@ highchart() %>%
 
 rm(missing_chg_data_trend_downtown_5days)
 invisible(gc())
+```
+
+
+```{r}
+
+
+
+# scheduling_data <- access_raw_tbl %>%
+#   filter(!is.na(SITE)) %>%
+#   mutate(Campus = case_when(SITE == "MSDD" ~ "MSDMG",
+#                             TRUE ~ SITE)) %>%
+#   # mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
+#   #                           DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC",
+#   #                           TRUE ~ Campus)) %>%
+#   filter(!Campus %in% c("MS NOW", "MSHP", "OTHER")) %>%
+#   mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
+#          Appt.Year = year(CONTACT_DATE),
+#          Appt.MonNum = month(CONTACT_DATE)) %>%
+#   mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
+#          New.PT3 = ifelse(is.na(LOS_NAME), NA, ifelse(LOC_NAME %like% "INITIAL|NEW", "New", "Established")),
+#          enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
+#   mutate(open.days = ifelse(enc.status == "OPEN", 
+#                             TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
+#                             TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
+#   mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" ))) 
+# 
+# # Format Data --------------------------
+# data <- access_raw_tbl %>%
+#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
+#   mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
+#          Appt.Year = year(CONTACT_DATE),
+#          Appt.MonNum = month(CONTACT_DATE)) %>%
+#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, Appt.Year, Appt.MonNum, VISIT_GROUP_NUM) %>%
+#   summarise(total = n()) %>%
+#   collect() %>%
+#   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+#   mutate(Appt.Year = as.character(Appt.Year))
+#   
+#   
+#   
+#   
+#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
+#   filter(TO_DATE(date_start_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
+#   # filter(TO_DATE(date_end_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
+#   group_by(Campus, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, Appt.Year, Appt.MonNum) %>%
+#   summarise(total = n()) %>%
+#   collect() %>%
+#   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+#   mutate(Appt.Year = as.character(Appt.Year))
+# 
+# 
+# data_list <- list("Volume" = vol_trending,
+#                   "Radiology" = radiology_data_raw,
+#                   "Rad Onc" = rad_onc_data_raw)
+# 
+# require(openxlsx)
+# write.xlsx(data_list, "May 2024 Data.xlsx")
+
 ```
 
 
