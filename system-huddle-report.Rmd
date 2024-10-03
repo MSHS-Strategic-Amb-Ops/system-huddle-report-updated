@@ -284,6 +284,7 @@ missing_enc_visit_tbl <- tbl(conn1, "OPEN_ENC_EXCLUSION_VISIT")
 missing_enc_resource_tbl <- tbl(conn1, "OPEN_ENC_EXCLUSION_RESOURCE")
 hh_crosswalk_tbl <- tbl(conn1, "HH_CROSSWALK") 
 
+
 ```
 
 
@@ -781,8 +782,8 @@ missing_chg_data_trend_downtown_5days <- missing_chg_data %>%
 
 ```
 
+```{r  Open Encounters (5 Days) Metric Trending by Site Output, fig.width=12, fig.height = 5, fig.align = 'center', echo = FALSE, warning = FALSE, message = FALSE}
 
-```{r Open Encounters (5 Days) Metric Trending by Site Output, fig.width=12, fig.height = 5, fig.align = 'center', echo = FALSE, warning = FALSE, message = FALSE}
 # Total Encounters and % Closed within 7 Days by Site
 map(unique(missing_chg_data_trend_5days$Campus), function(x){
 highchart() %>%
@@ -819,9 +820,10 @@ highchart() %>%
 
 # rm(missing_chg_data_trend_5days)
 # invisible(gc())
-
 ```
+
 --------------------------------------------------------------------------------
+
 ```{r Open Encounters (5 Days) Metric Trending Summarized, fig.width=12, fig.height = 5, fig.align = 'center', echo = FALSE, warning = FALSE, message = FALSE}
 
 # Based on Metric % Encounteres Closed <=7 days
@@ -922,6 +924,36 @@ invisible(gc())
 ```
 
 
+```{r Ambulatory Volume Update for Kelly, echo = FALSE, warning = FALSE, message = FALSE}
+
+# volume <- access_raw_tbl %>%
+#   mutate(Appt.Year = year(CONTACT_DATE),
+#          Appt.MonNum = month(CONTACT_DATE)) %>%
+#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
+#   filter(Appt.Year >= 2019) %>%
+#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DEP_RPT_GRP_ELEVEN, Appt.Year, Appt.MonNum, VISIT_METHOD, VISIT_GROUP_NUM, FINCLASS) %>%
+#   summarise(total = n()) %>%
+#   collect()
+# 
+# volume_new <- volume %>%
+#   mutate(Appt.YearMonth = paste0(Appt.Year, "-",as.numeric(Appt.MonNum)),
+#          Appt.Month = format(as.Date(paste0(paste0(Appt.Year, "-",as.numeric(Appt.MonNum)),"-01")), "%b"))
+# 
+# require(openxlsx)
+# write.xlsx(volume_new, "EPIC Volume Jan19Jul24.xlsx")
+# 
+# 
+# rad_radOnc_data_new <- rad_radOnc_data %>%
+#   mutate(DEP_RPT_GRP_ELEVEN = "RIS/MOSAIC",
+#          FINCLASS = "RIS/MOSAIC",
+#          Appt.YearMonth = paste0(Appt.Year, "-",as.numeric(Appt.MonNum))) %>%
+#   dplyr::select(Campus, Campus.Specialty, Department, DEP_RPT_GRP_ELEVEN, Appt.Year, Appt.MonNum, Visit.Method, FINCLASS, monthly_vol, Appt.YearMonth, Appt.Month)
+# 
+# require(openxlsx)
+# write.xlsx(rad_radOnc_data_new, "RIS and MOSAIC Jan19Jul24.xlsx")
+```
+
+
 ### 2. Visit Volume Variance Trending
 ```{r Volume Variance to 2019 Metric Trending by Site, echo = FALSE, warning = FALSE, message = FALSE}
 
@@ -935,7 +967,6 @@ vol_trending <- scheduling_data %>%
   collect() %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Year = as.character(Appt.Year))
-
 
 # Merge with radiology and rad onc monthly volume
 vol_trending <- bind_rows(vol_trending, rad_radOnc_data)
