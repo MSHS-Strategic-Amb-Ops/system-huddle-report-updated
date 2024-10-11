@@ -374,9 +374,9 @@ rad_onc_data_raw <- rad_onc_data_raw %>%
   mutate_at(c('MSBI', 'MSH.MSDFP', 'MSUS', 'MSW'), as.numeric) %>%
   mutate(Campus.Specialty = "Radiation Oncology",
          Department = "Radiation Oncology",
-         Appt.Year = format(as.Date(as.yearmon(Month, "%b-%y"), format = "%b %y"),"%Y"),
-         Appt.MonNum = as.numeric(format(as.Date(as.yearmon(Month, "%b-%y"), format = "%b %y"),"%m")),
-         Appt.Month = format(as.Date(as.yearmon(Month, "%b-%y"), format = "%b %y"),"%b"),
+         Appt.Year = format(as.Date(as.yearmon(Month, "%y-%b"), format = "%b %y"),"%Y"),
+         Appt.MonNum = as.numeric(format(as.Date(as.yearmon(Month, "%y-%b"), format = "%b %y"),"%m")),
+         Appt.Month = format(as.Date(as.yearmon(Month, "%y-%b"), format = "%b %y"),"%b"),
          Visit.Method = "IN PERSON") %>%
   dplyr::select(-Month) %>%
   pivot_longer(MSBI:MSW,
@@ -941,7 +941,7 @@ invisible(gc())
 #          Appt.Month = format(as.Date(paste0(paste0(Appt.Year, "-",as.numeric(Appt.MonNum)),"-01")), "%b"))
 # 
 # require(openxlsx)
-# write.xlsx(volume_new, "EPIC Volume Jan19Jul24.xlsx")
+# write.xlsx(volume_new, "EPIC Volume Jan19Oct24.xlsx")
 # 
 # 
 # rad_radOnc_data_new <- rad_radOnc_data %>%
@@ -951,7 +951,7 @@ invisible(gc())
 #   dplyr::select(Campus, Campus.Specialty, Department, DEP_RPT_GRP_ELEVEN, Appt.Year, Appt.MonNum, Visit.Method, FINCLASS, monthly_vol, Appt.YearMonth, Appt.Month)
 # 
 # require(openxlsx)
-# write.xlsx(rad_radOnc_data_new, "RIS and MOSAIC Jan19Jul24.xlsx")
+# write.xlsx(rad_radOnc_data_new, "RIS and MOSAIC Jan19Oct24.xlsx")
 ```
 
 
