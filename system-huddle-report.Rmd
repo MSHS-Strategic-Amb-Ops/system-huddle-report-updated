@@ -532,23 +532,46 @@ hh_data_merged <- hh_data_merged %>%
 
 scheduling_data <- access_raw_tbl %>%
   filter(!is.na(SITE)) %>%
+  dplyr::select(PAT_ENC_CSN_ID, CONTACT_DATE, APPT_STATUS_NAME,
+                DEPARTMENT_ID, DEPARTMENT_NAME, DEPT_SPECIALTY_NAME,        
+                PROV_ID, PROV_NAME_WID, PRC_NAME, PRC_ID, APPT_MADE_DTTM,                
+                APPT_MADE_DATE, APPT_BLOCK_NAME, APPT_DTTM,               
+                APPT_CANC_DTTM, APPT_CANC_DATE,               
+                EM_CODE_YN, PAT_NAME,                     
+                MRN, VISIT_GROUP_NUM,             
+                FINCLASS, VISITPAYOR, VISITPLAN,                     
+                VISIT_PROV_STAFF_RESOURCE_C,                    
+                VISIT_TYPE,           
+                NPI,           
+                CAMPUS,               
+                Y_COSIGN_MSG, Y_CHART_COSIGN_ID, COSIGN_NAME, Y_ENC_COSIGN_TIME, Y_ENC_CLOSE_TIME,              
+                Y_ENC_OPEN_TIME,                         
+                COS_PROV_ID, COS_PROV_NAME,      
+                ENC_CLOSED_CHARGE_STATUS, PRIMARY_DX_CODE, PRIMARY_DX_NAME, LOS_CODE,
+                LOS_NAME, DERIVED_STATUS_DESC, DEP_RPT_GRP_ELEVEN, DEP_RPT_GRP_SEVENTEEN,          
+                SITE, VISIT_METHOD, VIS_NEW_TO_DEP_YN, VIS_NEW_TO_PROV_YN, SCHED_METHOD)
+
+
+scheduling_data <- scheduling_data %>%
   mutate(Campus = case_when(SITE == "MSDD" ~ "MSDMG",
                             TRUE ~ SITE)) %>%
   mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
                             DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC",
                             TRUE ~ Campus)) %>%
-  filter(!Campus %in% c("MSB", "MS NOW", "MSHP", "OTHER", "DUBIN", "RTC", "ONCOLOGY")) %>%
+  filter(!Campus %in% c("MSB", "MS NOW", "MSHP", "OTHER", "DUBIN", "RTC", "ONCOLOGY"))
+
+
+scheduling_data <- scheduling_data %>%
   mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
          Appt.Year = year(CONTACT_DATE),
          Appt.MonNum = month(CONTACT_DATE)) %>%
   mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
-         New.PT3 = ifelse(is.na(LOS_NAME), NA, ifelse(LOC_NAME %like% "INITIAL|NEW", "New", "Established")),
+         New.PT3 = ifelse(is.na(LOS_NAME), NA, ifelse(LOS_NAME %like% "INITIAL|NEW", "New", "Established")),
          enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
   mutate(open.days = ifelse(enc.status == "OPEN", 
                             TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
                             TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
-  mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" ))) %>%
-  collect()
+  mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" ))) 
   
 ```
 
@@ -584,12 +607,16 @@ missing_chg_cutOff <- paste0(format(as.Date(missing_chg_cutOff), "%Y-%m-%d"), " 
 missing_chg_data <- scheduling_data %>%
   filter(Appt.Year >= prior_year) %>%
   filter(DERIVED_STATUS_DESC == "Arrived") %>%
-  filter(VISIT_PROV_STAFF_RESOURCE_C == 1) %>%
-  filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= TO_DATE(APPT_DTTM)) %>%
+  filter(VISIT_PROV_STAFF_RESOURCE_C == 1)
+
+missing_chg_data <- missing_chg_data %>%
+  filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= TO_DATE(APPT_DTTM))
+
+missing_chg_data <- missing_chg_data %>%
   mutate(clo.5days = ifelse(open.days <= 5, 'YES', 'NO')) %>%
   group_by(Campus, DEPARTMENT_NAME, Provider, PRC_NAME, PRC_ID, Appt.Year, Appt.MonNum, enc.status, clo.5days) %>%
-  summarise(total = n()) 
-  # collect()
+  summarise(total = n()) %>%
+  collect()
   
 missing_chg_data <- missing_chg_data %>% 
   filter(DEPARTMENT_NAME %!in% exc_depts) %>%
@@ -600,6 +627,7 @@ missing_chg_data <- missing_chg_data %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Year = as.character(Appt.Year)) %>%
   mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+
 
 missing_chg_data_trend_5days <- missing_chg_data %>%
   group_by(Campus, Appt.Year, Appt.MonNum, Appt.MonthYear, enc.status, clo.5days) %>%
