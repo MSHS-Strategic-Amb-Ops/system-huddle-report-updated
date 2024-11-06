@@ -528,10 +528,9 @@ hh_data_merged <- hh_data_merged %>%
 ```
 
 
-```{r Scheduling Data Processing, echo = FALSE, warning = FALSE, message = FALSE}
+```{r Scheduling Data Filtering, echo = FALSE, warning = FALSE, message = FALSE}
 
 scheduling_data <- access_raw_tbl %>%
-  filter(!is.na(SITE)) %>%
   dplyr::select(PAT_ENC_CSN_ID, CONTACT_DATE, APPT_STATUS_NAME,
                 DEPARTMENT_ID, DEPARTMENT_NAME, DEPT_SPECIALTY_NAME,        
                 PROV_ID, PROV_NAME_WID, PRC_NAME, PRC_ID, APPT_MADE_DTTM,                
@@ -549,10 +548,15 @@ scheduling_data <- access_raw_tbl %>%
                 COS_PROV_ID, COS_PROV_NAME,      
                 ENC_CLOSED_CHARGE_STATUS, PRIMARY_DX_CODE, PRIMARY_DX_NAME, LOS_CODE,
                 LOS_NAME, DERIVED_STATUS_DESC, DEP_RPT_GRP_ELEVEN, DEP_RPT_GRP_SEVENTEEN,          
-                SITE, VISIT_METHOD, VIS_NEW_TO_DEP_YN, VIS_NEW_TO_PROV_YN, SCHED_METHOD)
+                SITE, VISIT_METHOD, VIS_NEW_TO_DEP_YN, VIS_NEW_TO_PROV_YN, SCHED_METHOD) 
+  
+```
 
 
-scheduling_data <- scheduling_data %>%
+```{r Scheduling Data Processing, echo = FALSE, warning = FALSE, message = FALSE}
+
+scheduling_data <- access_raw_tbl %>%
+  filter(!is.na(SITE)) %>%
   mutate(Campus = case_when(SITE == "MSDD" ~ "MSDMG",
                             TRUE ~ SITE)) %>%
   mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
@@ -572,7 +576,8 @@ scheduling_data <- scheduling_data %>%
                             TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
                             TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
   mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" ))) 
-  
+
+# scheduling_data <- scheduling_data %>% collect()
 ```
 
 
@@ -604,59 +609,59 @@ exc_prc_id <- unique(missing_exc_visitType$PRC_ID)
 
 missing_chg_cutOff <- paste0(format(as.Date(missing_chg_cutOff), "%Y-%m-%d"), " 00:00:00")
 
-missing_chg_data <- scheduling_data %>%
-  filter(Appt.Year >= prior_year) %>%
-  filter(DERIVED_STATUS_DESC == "Arrived") %>%
-  filter(VISIT_PROV_STAFF_RESOURCE_C == 1)
+# missing_chg_data <- scheduling_data %>%
+#   filter(Appt.Year >= prior_year) %>%
+#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
+#   filter(VISIT_PROV_STAFF_RESOURCE_C == 1)
+# 
+# missing_chg_data <- missing_chg_data %>%
+#   filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= TO_DATE(APPT_DTTM))
+# 
+# missing_chg_data <- missing_chg_data %>%
+#   mutate(clo.5days = ifelse(open.days <= 5, 'YES', 'NO')) %>%
+#   group_by(Campus, DEPARTMENT_NAME, Provider, PRC_NAME, PRC_ID, Appt.Year, Appt.MonNum, enc.status, clo.5days) %>%
+#   summarise(total = n()) %>%
+#   collect()
+#   
+# missing_chg_data <- missing_chg_data %>% 
+#   filter(DEPARTMENT_NAME %!in% exc_depts) %>%
+#   filter(Provider %!in% exc_providers) %>%
+#   filter(PRC_NAME %!in% exc_prc_name) %>%
+#   filter(PRC_ID %!in% exc_prc_id) %>%
+#   filter(!str_detect(PRC_NAME, "ECHO|SOCIAL|NURSE|NUTRITION|LAB|TREATMENT")) %>%
+#   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+#   mutate(Appt.Year = as.character(Appt.Year)) %>%
+#   mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+# 
+# 
+# missing_chg_data_trend_5days <- missing_chg_data %>%
+#   group_by(Campus, Appt.Year, Appt.MonNum, Appt.MonthYear, enc.status, clo.5days) %>%
+#   summarise(total = sum(total)) %>%
+#   group_by(Campus, Appt.Year, Appt.MonthYear) %>%
+#   mutate(total.enc = sum(total)) %>%
+#   pivot_wider(names_from = clo.5days,
+#               values_from = total,
+#               values_fill = 0) %>%
+#   mutate(clo.5days.perc = round((YES/(total.enc))*100,0)) %>%
+#   filter(enc.status == "CLOSED")
+# 
+# 
+# missing_chg_data_trend_downtown_5days <- missing_chg_data %>%
+#   filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>%
+#   mutate(Campus = "MS Downtown") %>%
+#   group_by(Campus, Appt.Year, Appt.MonNum, Appt.MonthYear, enc.status, clo.5days) %>%
+#   summarise(total = sum(total)) %>%
+#   group_by(Campus, Appt.MonthYear) %>%
+#   mutate(total.enc = sum(total)) %>%
+#   pivot_wider(names_from = clo.5days,
+#               values_from = total,
+#               values_fill = 0) %>%
+#   mutate(clo.5days.perc = round((YES/(total.enc))*100,0)) %>%
+#   filter(enc.status == "CLOSED")
 
-missing_chg_data <- missing_chg_data %>%
-  filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= TO_DATE(APPT_DTTM))
 
-missing_chg_data <- missing_chg_data %>%
-  mutate(clo.5days = ifelse(open.days <= 5, 'YES', 'NO')) %>%
-  group_by(Campus, DEPARTMENT_NAME, Provider, PRC_NAME, PRC_ID, Appt.Year, Appt.MonNum, enc.status, clo.5days) %>%
-  summarise(total = n()) %>%
-  collect()
-  
-missing_chg_data <- missing_chg_data %>% 
-  filter(DEPARTMENT_NAME %!in% exc_depts) %>%
-  filter(Provider %!in% exc_providers) %>%
-  filter(PRC_NAME %!in% exc_prc_name) %>%
-  filter(PRC_ID %!in% exc_prc_id) %>%
-  filter(!str_detect(PRC_NAME, "ECHO|SOCIAL|NURSE|NUTRITION|LAB|TREATMENT")) %>%
-  mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
-  mutate(Appt.Year = as.character(Appt.Year)) %>%
-  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
-
-
-missing_chg_data_trend_5days <- missing_chg_data %>%
-  group_by(Campus, Appt.Year, Appt.MonNum, Appt.MonthYear, enc.status, clo.5days) %>%
-  summarise(total = sum(total)) %>%
-  group_by(Campus, Appt.Year, Appt.MonthYear) %>%
-  mutate(total.enc = sum(total)) %>%
-  pivot_wider(names_from = clo.5days,
-              values_from = total,
-              values_fill = 0) %>%
-  mutate(clo.5days.perc = round((YES/(total.enc))*100,0)) %>%
-  filter(enc.status == "CLOSED")
-
-
-missing_chg_data_trend_downtown_5days <- missing_chg_data %>%
-  filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>%
-  mutate(Campus = "MS Downtown") %>%
-  group_by(Campus, Appt.Year, Appt.MonNum, Appt.MonthYear, enc.status, clo.5days) %>%
-  summarise(total = sum(total)) %>%
-  group_by(Campus, Appt.MonthYear) %>%
-  mutate(total.enc = sum(total)) %>%
-  pivot_wider(names_from = clo.5days,
-              values_from = total,
-              values_fill = 0) %>%
-  mutate(clo.5days.perc = round((YES/(total.enc))*100,0)) %>%
-  filter(enc.status == "CLOSED")
-
-
-# missing_chg_data_trend_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_5days.rds"))
-# missing_chg_data_trend_downtown_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_downtown_5days.rds"))
+missing_chg_data_trend_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_5days.rds"))
+missing_chg_data_trend_downtown_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_downtown_5days.rds"))
 
 
 ```
@@ -993,7 +998,7 @@ vol_trending <- scheduling_data %>%
   # filter(TO_DATE(date_end_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
   group_by(Campus, Appt.Year, Appt.MonNum) %>%
   summarise(total = n()) %>%
-  # collect() %>%
+  collect() %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Year = as.character(Appt.Year))
 
@@ -1070,7 +1075,7 @@ vol_trending_downtown <- scheduling_data %>%
   # filter(TO_DATE(date_end_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
   group_by(Campus, Appt.Year, Appt.MonNum) %>%
   summarise(total = n()) %>%
-  # collect() %>%
+  collect() %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Year = as.character(Appt.Year))
 
@@ -1154,7 +1159,7 @@ new_vol <- scheduling_data %>%
   filter(TO_DATE(date_start_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
   group_by(Campus, Appt.Year, Appt.MonNum, LOS_NAME) %>%
   summarise(total = n()) %>%
-  # collect() %>%
+  collect() %>%
   mutate(New.PT3 = ifelse(str_detect(LOS_NAME, "NEW|INITIAL"), "New", "Established"))
 
 
@@ -1422,26 +1427,32 @@ invisible(gc())
 ## MSHS
 ### 1. MSHS Open Encounters
 ```{r MSHS Unlocked Notes Metrics, echo = FALSE, warning = FALSE, message = FALSE}
-missing_ytd_data <-scheduling_data %>%
-  filter(Appt.Year == todays_year) %>%
-  filter(DERIVED_STATUS_DESC == "Arrived") %>%
-  filter(VISIT_PROV_STAFF_RESOURCE_C == 1) %>%
-  filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= APPT_DTTM) %>%
-  mutate(clo.5days = ifelse(open.days <= 5, 'YES', 'NO')) 
-  # collect()
 
-missing_ytd_data <- missing_ytd_data %>% 
-  filter(DEPARTMENT_NAME %!in% exc_depts) %>%
-  filter(Provider %!in% exc_providers) %>%
-  filter(PRC_NAME %!in% exc_prc_name) %>%
-  filter(PRC_ID %!in% exc_prc_id) %>%
-  filter(!str_detect(PRC_NAME, "ECHO|SOCIAL|NURSE|NUTRITION|LAB|TREATMENT")) %>%
-  mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
-  mutate(Appt.Year = as.character(Appt.Year)) %>%
-  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+# missing_ytd_data <-scheduling_data %>%
+#   filter(Appt.Year == todays_year) %>%
+#   filter(DERIVED_STATUS_DESC == "Arrived")
+# 
+# missing_ytd_data <-missing_ytd_data %>%
+#   filter(VISIT_PROV_STAFF_RESOURCE_C == 1) %>%
+#   filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= APPT_DTTM)
+# 
+# missing_ytd_data <-missing_ytd_data %>%
+#   mutate(clo.5days = ifelse(open.days <= 5, 'YES', 'NO')) %>%
+#   collect()
+# 
+# 
+# missing_ytd_data <- missing_ytd_data %>%
+#   filter(DEPARTMENT_NAME %!in% exc_depts) %>%
+#   filter(Provider %!in% exc_providers) %>%
+#   filter(PRC_NAME %!in% exc_prc_name) %>%
+#   filter(PRC_ID %!in% exc_prc_id) %>%
+#   filter(!str_detect(PRC_NAME, "ECHO|SOCIAL|NURSE|NUTRITION|LAB|TREATMENT")) %>%
+#   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+#   mutate(Appt.Year = as.character(Appt.Year)) %>%
+#   mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
 
-# missing_ytd_data <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_ytd_data.rds")) %>%
-#   filter(Appt.Year == todays_year) 
+
+missing_ytd_data <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_ytd_data.rds")) 
 
 # Closed Encounters YTD
 closed_ytd_mshs <- missing_ytd_data %>%
