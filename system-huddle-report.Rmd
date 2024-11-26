@@ -459,8 +459,12 @@ hh_data_comp <- hh_data_comp_raw %>%
   filter(!is.na(site))
 
 
+
 # Process Patient Entry Data --------------------
 colnames(hh_data_comp_raw_pt_entry) <- tolower(colnames(hh_data_comp_raw_pt_entry))
+
+print(hh_data_comp_raw_pt_entry)
+
 hh_data_comp_pt_entry <- hh_data_comp_raw_pt_entry %>%
   rename(date = data_date) %>%
   mutate(site = ifelse(site == "MSH", "MSDFP", site)) %>%
