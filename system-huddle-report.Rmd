@@ -334,13 +334,13 @@ hh_data_comp_raw <- read.csv("hand_hygiene_comp.csv")
 hh_data_comp_raw_pt_entry <- read.csv("pt_hand_hygiene_comp.csv")
 
 # Run on Server ---------------------------
-con_hh <- dbConnect(odbc(),
-                    Driver = "SQLServer",
-                    Server = "10.2.42.69", # old server
-                    # Server = "10.161.21.26",
-                    UID = "kweons01",
-                    PWD = "Pasword01#PasPasword01#Pas",
-                    Port = 1433)
+# con_hh <- dbConnect(odbc(),
+#                     Driver = "SQLServer",
+#                     Server = "10.2.42.69", # old server
+#                     # Server = "10.161.21.26",
+#                     UID = "kweons01",
+#                     PWD = "Pasword01#PasPasword01#Pas",
+#                     Port = 1433)
 # hh_data_comp_raw_old <- dbGetQuery(con_hh, "SELECT * FROM qidm_dev.dbo.amb_hand_hygiene_comp") # old table
 # hh_data_comp_raw <- dbGetQuery(con_hh, "SELECT * FROM  qidm_prod.dbo.amb_hand_hygiene_comp")
 hh_data_comp_raw <- as.data.frame(hh_data_comp_raw)
