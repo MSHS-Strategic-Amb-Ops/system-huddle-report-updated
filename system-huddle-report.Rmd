@@ -330,20 +330,24 @@ missing_chg_cutOff <- business_days[length(business_days)-3] # Should this be 2 
 # hh_data_comp_raw <- sqlQuery(con_hh, "SELECT * FROM qidm_dev.dbo.amb_hand_hygiene_comp") # Master Referrals Data
 # hh_data_comp_raw_pt_entry <- sqlQuery(con_hh, "SELECT * FROM qidm_dev.dbo.PT_AMB_HAND_HYGIENE_COMP") # Master Referrals Data
 
+hh_data_comp_raw <- read.csv("hand_hygiene_comp.csv")
+hh_data_comp_raw_pt_entry <- read.csv("pt_hand_hygiene_comp.csv")
 
 # Run on Server ---------------------------
 con_hh <- dbConnect(odbc(),
                     Driver = "SQLServer",
-                    Server = "10.2.42.69",
+                    Server = "10.2.42.69", # old server
+                    # Server = "10.161.21.26",
                     UID = "kweons01",
                     PWD = "Pasword01#PasPasword01#Pas",
                     Port = 1433)
-hh_data_comp_raw <- dbGetQuery(con_hh, "SELECT * FROM qidm_dev.dbo.amb_hand_hygiene_comp")
+# hh_data_comp_raw_old <- dbGetQuery(con_hh, "SELECT * FROM qidm_dev.dbo.amb_hand_hygiene_comp") # old table
+# hh_data_comp_raw <- dbGetQuery(con_hh, "SELECT * FROM  qidm_prod.dbo.amb_hand_hygiene_comp")
 hh_data_comp_raw <- as.data.frame(hh_data_comp_raw)
 hh_data_comp_raw <- hh_data_comp_raw %>% distinct()
 
 
-hh_data_comp_raw_pt_entry <- dbGetQuery(con_hh, "SELECT * FROM qidm_dev.dbo.PT_AMB_HAND_HYGIENE_COMP")
+# hh_data_comp_raw_pt_entry_old <- dbGetQuery(con_hh, "SELECT * FROM qidm_prod.dbo.PT_AMB_HAND_HYGIENE_COMP")
 hh_data_comp_raw_pt_entry <- as.data.frame(hh_data_comp_raw_pt_entry)
 hh_data_comp_raw_pt_entry <- hh_data_comp_raw_pt_entry %>% distinct()
 
@@ -450,6 +454,7 @@ hh_data_comp <- hh_data_comp_raw %>%
     values_to = "unit"
   ) %>%
   filter(date != "NULL") %>%
+  filter(date != "") %>%
   mutate_if(is.numeric, as.character) %>%
   filter(!is.na(site))
 
@@ -484,9 +489,9 @@ hh_data_merged <- hh_data_comp %>%
             nurse_hands_aft = sum(nurse_hands_aft),
             mt_hands_bef = sum(mt_hands_bef),
             mt_hands_aft = sum(mt_hands_aft)) %>%
-  mutate(date = as.Date(date, "%Y-%m-%d"),
-         Appt.Year = as.numeric(format(as.Date(date, "%Y-%m-%d"),"%Y")),
-         Appt.WeekNum = lubridate::epiweek(as.Date(date, "%Y-%m-%d"))) %>%
+  mutate(date = as.Date(date, "%m/%d/%Y"),
+         Appt.Year = as.numeric(format(as.Date(date, "%m/%d/%Y"),"%Y")),
+         Appt.WeekNum = lubridate::epiweek(as.Date(date, "%m/%d/%Y"))) %>%
   filter(Appt.Year >= as.numeric(prior_year))
 
 hh_data_merged_role <- hh_data_comp %>%
@@ -494,8 +499,8 @@ hh_data_merged_role <- hh_data_comp %>%
   pivot_longer(provider_hands_bef: mt_hands_aft,
                names_to = "role",
                values_to = "compliance") %>%
-  mutate(date = as.Date(date, "%Y-%m-%d"),
-         Appt.Year = as.numeric(format(as.Date(date, "%Y-%m-%d"),"%Y")),
+  mutate(date = as.Date(date, "%m/%d/%Y"),
+         Appt.Year = as.numeric(format(as.Date(date, "%m/%d/%Y"),"%Y")),
          Appt.WeekNum = lubridate::epiweek(as.Date(date, "%m/%d/%Y")),
          compliance = ifelse(compliance == 2,0,compliance)) %>%
   filter(compliance != "") %>%
@@ -1275,7 +1280,7 @@ invisible(gc())
 ```{r Hand Hygiene Metric Trending by Site, fig.width=12, fig.height = 5, fig.align = 'center', echo = FALSE, warning = FALSE, message = FALSE}
 
 hh_site <- hh_data_merged %>%
-  mutate(Month = format(as.Date(date, format="%Y-%m-%d"), "%Y-%m")) %>%
+  mutate(Month = format(as.Date(date, format="%m/%d/%Y"), "%Y-%m")) %>%
   filter(date >= date_start & date <= Sys.Date())
 
 
