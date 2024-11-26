@@ -7360,47 +7360,20 @@
     }
   },
   "files": {
-    "EPIC Open Encounters_010123_052724_as of 053124.xlsx": {
-      "checksum": "b4650c116ef3fa5ff09386ae456295ff"
+    "hand_hygiene_comp.csv": {
+      "checksum": "d472c7476431b05544eabccac41031e8"
     },
-    "EPIC Volume Jan19Jul24.xlsx": {
-      "checksum": "f0df52e45374927f000f606939b1b199"
-    },
-    "EPIC Volume Jan19Oct24.xlsx": {
-      "checksum": "7d66baf4552d7faa1b605b14d152fda6"
-    },
-    "EPIC Volume Jan22Jul24.xlsx": {
-      "checksum": "319cfdd23115097e254a3f8ac17f12bf"
-    },
-    "March 2024 Volume.xlsx": {
-      "checksum": "850be1c6f7be39c20869a888136f284c"
-    },
-    "May 2024 Data.xlsx": {
-      "checksum": "1d93b621d43423bf1ef99f8c51762929"
-    },
-    "Rad_RadOnc_Data_080224.xlsx": {
-      "checksum": "6e4ee2d3b2721863effaf941d2a27918"
+    "pt_hand_hygiene_comp.csv": {
+      "checksum": "7685388caa9e4619a5dbca0d37631809"
     },
     "README.md": {
       "checksum": "de93cb9067471e7b2f332ad5eba7bb50"
     },
-    "RIS and MOSAIC Jan19Jul24.xlsx": {
-      "checksum": "4b2406d38dfe3b74ecc733e8e5879620"
-    },
-    "RIS and MOSAIC Jan19Oct24.xlsx": {
-      "checksum": "7b46d4eadb105b24cef85fd9529f2cb1"
-    },
-    "RIS and MOSAIC Jan22Jul24.xlsx": {
-      "checksum": "c50f10639afda6428ba2f56e6b7c3300"
-    },
     "system-huddle-render.Rmd": {
       "checksum": "3c7a16cd26313855498a826525df8374"
     },
-    "system-huddle-report.html": {
-      "checksum": "1d734883edb573b879fb0a6aef466077"
-    },
     "system-huddle-report.Rmd": {
-      "checksum": "35146a1894346feb18ecf7c09e5ce15d"
+      "checksum": "c09a0229522472a8ebc53f1f0195490b"
     }
   },
   "users": null
