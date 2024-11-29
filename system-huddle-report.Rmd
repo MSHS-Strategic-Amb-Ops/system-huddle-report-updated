@@ -1058,7 +1058,7 @@ highchart() %>%
                 dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
   hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
     hc_title(text = paste0(x, " - Visit Volume Variance"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
-    hc_subtitle(text = paste0("Includes Radiology and Rad Onc visits up to ",radiology_date,"<br> Based on visits from ",date_start," to ",date_end),
+    hc_subtitle(text = paste0("Includes Radiology and Rad Onc visits up to ",rad_onc_date,"<br> Based on visits from ",date_start," to ",date_end),
               align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
     hc_tooltip(shared = TRUE, borderColor = "black")
   }) %>%
@@ -1138,7 +1138,7 @@ highchart() %>%
                 dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
   hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
     hc_title(text = paste0(x, " - Visit Volume Variance"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
-    hc_subtitle(text = paste0("Includes MSUS, MSDMG, and MSBI <br>","Includes Radiology and Rad Onc visits up to ",radiology_date,
+    hc_subtitle(text = paste0("Includes MSUS, MSDMG, and MSBI <br>","Includes Radiology and Rad Onc visits up to ",rad_onc_date,
                               "<br> Based on visits from ",date_start," to ",date_end),
               align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
     hc_tooltip(shared = TRUE, borderColor = "black")
