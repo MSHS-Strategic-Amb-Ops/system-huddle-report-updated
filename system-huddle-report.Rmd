@@ -556,6 +556,8 @@ scheduling_data <- access_raw_tbl %>%
 ```{r Scheduling Data Processing, echo = FALSE, warning = FALSE, message = FALSE}
 
 scheduling_data <- access_raw_tbl %>%
+  filter(PATIENT_CLASS %NOT LIKE% '%INPATIENT%') %>%
+  filter(PATIENT_CLASS %NOT LIKE% '%EMERGENCY%') %>%
   filter(!is.na(SITE)) %>%
   mutate(Campus = case_when(SITE == "MSDD" ~ "MSDMG",
                             TRUE ~ SITE)) %>%
