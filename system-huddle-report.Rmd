@@ -325,37 +325,32 @@ missing_chg_cutOff <- business_days[length(business_days)-3] # Should this be 2 
 
 
 ```{r Import HH Data, echo = FALSE, warning = FALSE, message = FALSE}
-# Run Locally -----------------------------
-# con_hh <- odbcConnect("handhygiene") # Connect to Server
-# hh_data_comp_raw <- sqlQuery(con_hh, "SELECT * FROM qidm_dev.dbo.amb_hand_hygiene_comp") # Master Referrals Data
-# hh_data_comp_raw_pt_entry <- sqlQuery(con_hh, "SELECT * FROM qidm_dev.dbo.PT_AMB_HAND_HYGIENE_COMP") # Master Referrals Data
-
-hh_data_comp_raw <- read.csv("hand_hygiene_comp.csv")
-hh_data_comp_raw_pt_entry <- read.csv("pt_hand_hygiene_comp.csv")
 
 # Run on Server ---------------------------
-# con_hh <- dbConnect(odbc(),
-#                     Driver = "SQLServer",
-#                     Server = "10.2.42.69", # old server
-#                     # Server = "10.161.21.26",
-#                     UID = "kweons01",
-#                     PWD = "Pasword01#PasPasword01#Pas",
-#                     Port = 1433)
+con_hh <- dbConnect(odbc(),
+                    Driver = "SQLServer",
+                    # Server = "10.2.42.69", # old server
+                    Server = "10.161.21.26",
+                    UID = "kweons01",
+                    PWD = "Pasword01#PasPasword01#Pas",
+                    Port = 1433)
 # hh_data_comp_raw_old <- dbGetQuery(con_hh, "SELECT * FROM qidm_dev.dbo.amb_hand_hygiene_comp") # old table
-# hh_data_comp_raw <- dbGetQuery(con_hh, "SELECT * FROM  qidm_prod.dbo.amb_hand_hygiene_comp")
+hh_data_comp_raw <- dbGetQuery(con_hh, "SELECT * FROM qidm_prod.dbo.amb_hand_hygiene_comp")
 hh_data_comp_raw <- as.data.frame(hh_data_comp_raw)
 hh_data_comp_raw <- hh_data_comp_raw %>% distinct()
 
 
-# hh_data_comp_raw_pt_entry_old <- dbGetQuery(con_hh, "SELECT * FROM qidm_prod.dbo.PT_AMB_HAND_HYGIENE_COMP")
+hh_data_comp_raw_pt_entry <- dbGetQuery(con_hh, "SELECT * FROM qidm_prod.dbo.PT_AMB_HAND_HYGIENE_COMP")
 hh_data_comp_raw_pt_entry <- as.data.frame(hh_data_comp_raw_pt_entry)
 hh_data_comp_raw_pt_entry <- hh_data_comp_raw_pt_entry %>% distinct()
 
 
 # Import HH Data Mapping ------------------
 # hh_crosswalk <- as.data.frame(read_csv("/nfs/data/Applications/Ambulatory/hh_crosswalk.csv"))
-hh_crosswalk <- hh_crosswalk_tbl %>% collect()
- 
+hh_crosswalk <<- hh_crosswalk_tbl %>% collect()
+
+
+
 ```
 
 
@@ -373,7 +368,7 @@ radiology_ref <- radiology_site_tbl %>% collect()
 
 
 # Process Radiology + Rad Onc Data --------------------
-## Rad Onc Data 
+## Rad Onc Data
 rad_onc_data_raw <- rad_onc_data_raw %>%
   mutate_at(c('MSBI', 'MSH.MSDFP', 'MSUS', 'MSW'), as.numeric) %>%
   mutate(Campus.Specialty = "Radiation Oncology",
@@ -411,7 +406,7 @@ radiology_data_raw <- radiology_data_raw %>%
   arrange(Appt.Year, Appt.MonNum)
 
 
-# Merge Rad Onc and Radiology Data 
+# Merge Rad Onc and Radiology Data
 rad_radOnc_data <- bind_rows(rad_onc_data_raw, radiology_data_raw)
 
 rad_radOnc_data <- rad_radOnc_data %>%
@@ -423,7 +418,7 @@ rad_radOnc_data <- rad_radOnc_data %>%
 
 # Filter out Sites --------------------------
 rad_radOnc_data <- rad_radOnc_data %>%
-  filter(!Campus %in% c("MSB", "MS NOW", "MSHP", "OTHER")) 
+  filter(!Campus %in% c("MSB", "MS NOW", "MSHP", "OTHER"))
 
 rad_onc_date <- paste0(rad_onc_data_raw[nrow(rad_onc_data_raw),"Appt.Month"],", ", rad_onc_data_raw[nrow(rad_onc_data_raw),"Appt.Year"])
 radiology_date <- paste0(radiology_data_raw[nrow(radiology_data_raw),"Appt.Month"],", ", radiology_data_raw[nrow(radiology_data_raw),"Appt.Year"])
@@ -459,23 +454,17 @@ hh_data_comp <- hh_data_comp_raw %>%
   filter(!is.na(site))
 
 
-
 # Process Patient Entry Data --------------------
 colnames(hh_data_comp_raw_pt_entry) <- tolower(colnames(hh_data_comp_raw_pt_entry))
-
-print(hh_data_comp_raw_pt_entry)
-
 hh_data_comp_pt_entry <- hh_data_comp_raw_pt_entry %>%
   rename(date = data_date) %>%
   mutate(site = ifelse(site == "MSH", "MSDFP", site)) %>%
-  mutate_if(is.numeric, as.character) 
+  mutate_if(is.numeric, as.character)
 
 hh_data_comp_pt_entry$date <- as.character(hh_data_comp_pt_entry$date)
 hh_data_comp <- bind_rows(hh_data_comp, hh_data_comp_pt_entry)
 
-
-
-# Merge RedCap and Patient Entry Data -----------
+# # Merge RedCap and Patient Entry Data -----------
 hh_data_merged <- hh_data_comp %>%
   filter(!site %in% c("MS NOW", "MSHP", "NYEE", "MSQ","OTHER","MSB")) %>%
   filter(!is.na(site)) %>%
@@ -493,9 +482,9 @@ hh_data_merged <- hh_data_comp %>%
             nurse_hands_aft = sum(nurse_hands_aft),
             mt_hands_bef = sum(mt_hands_bef),
             mt_hands_aft = sum(mt_hands_aft)) %>%
-  mutate(date = as.Date(date, "%m/%d/%Y"),
-         Appt.Year = as.numeric(format(as.Date(date, "%m/%d/%Y"),"%Y")),
-         Appt.WeekNum = lubridate::epiweek(as.Date(date, "%m/%d/%Y"))) %>%
+  mutate(date = as.Date(date, "%Y-%m-%d"),
+         Appt.Year = as.numeric(format(as.Date(date, "%Y-%m-%d"),"%Y")),
+         Appt.WeekNum = lubridate::epiweek(as.Date(date, "%Y-%m-%d"))) %>%
   filter(Appt.Year >= as.numeric(prior_year))
 
 hh_data_merged_role <- hh_data_comp %>%
@@ -503,9 +492,9 @@ hh_data_merged_role <- hh_data_comp %>%
   pivot_longer(provider_hands_bef: mt_hands_aft,
                names_to = "role",
                values_to = "compliance") %>%
-  mutate(date = as.Date(date, "%m/%d/%Y"),
-         Appt.Year = as.numeric(format(as.Date(date, "%m/%d/%Y"),"%Y")),
-         Appt.WeekNum = lubridate::epiweek(as.Date(date, "%m/%d/%Y")),
+  mutate(date = as.Date(date, "%Y-%m-%d"),
+         Appt.Year = as.numeric(format(as.Date(date, "%Y-%m-%d"),"%Y")),
+         Appt.WeekNum = lubridate::epiweek(as.Date(date, "%Y-%m-%d")),
          compliance = ifelse(compliance == 2,0,compliance)) %>%
   filter(compliance != "") %>%
   filter(compliance != 2) %>%
@@ -520,7 +509,7 @@ hh_data_merged_role <- hh_data_comp %>%
     values_fill=list(total_obs=0)) %>%
   ungroup() %>%
   mutate(total_obs = `Yes`+`No`)
-  
+
 
 # Manually Format NET to NETWORK ------------------------
 hh_data_merged <- hh_data_merged %>%
@@ -534,6 +523,8 @@ hh_data_merged_role <- hh_data_merged_role %>%
 hh_data_merged <- hh_data_merged %>%
   mutate(site = ifelse(unit == "UCC", "MSUS",site))
 
+# print(hh_data_merged)
+
 ```
 
 
@@ -541,24 +532,24 @@ hh_data_merged <- hh_data_merged %>%
 
 scheduling_data <- access_raw_tbl %>%
   dplyr::select(PAT_ENC_CSN_ID, CONTACT_DATE, APPT_STATUS_NAME,
-                DEPARTMENT_ID, DEPARTMENT_NAME, DEPT_SPECIALTY_NAME,        
-                PROV_ID, PROV_NAME_WID, PRC_NAME, PRC_ID, APPT_MADE_DTTM,                
-                APPT_MADE_DATE, APPT_BLOCK_NAME, APPT_DTTM,               
-                APPT_CANC_DTTM, APPT_CANC_DATE,               
-                EM_CODE_YN, PAT_NAME,                     
-                MRN, VISIT_GROUP_NUM,             
-                FINCLASS, VISITPAYOR, VISITPLAN,                     
-                VISIT_PROV_STAFF_RESOURCE_C,                    
-                VISIT_TYPE,           
-                NPI,           
-                CAMPUS,               
-                Y_COSIGN_MSG, Y_CHART_COSIGN_ID, COSIGN_NAME, Y_ENC_COSIGN_TIME, Y_ENC_CLOSE_TIME,              
-                Y_ENC_OPEN_TIME,                         
-                COS_PROV_ID, COS_PROV_NAME,      
+                DEPARTMENT_ID, DEPARTMENT_NAME, DEPT_SPECIALTY_NAME,
+                PROV_ID, PROV_NAME_WID, PRC_NAME, PRC_ID, APPT_MADE_DTTM,
+                APPT_MADE_DATE, APPT_BLOCK_NAME, APPT_DTTM,
+                APPT_CANC_DTTM, APPT_CANC_DATE,
+                EM_CODE_YN, PAT_NAME,
+                MRN, VISIT_GROUP_NUM,
+                FINCLASS, VISITPAYOR, VISITPLAN,
+                VISIT_PROV_STAFF_RESOURCE_C,
+                VISIT_TYPE,
+                NPI,
+                CAMPUS,
+                Y_COSIGN_MSG, Y_CHART_COSIGN_ID, COSIGN_NAME, Y_ENC_COSIGN_TIME, Y_ENC_CLOSE_TIME,
+                Y_ENC_OPEN_TIME,
+                COS_PROV_ID, COS_PROV_NAME,
                 ENC_CLOSED_CHARGE_STATUS, PRIMARY_DX_CODE, PRIMARY_DX_NAME, LOS_CODE,
-                LOS_NAME, DERIVED_STATUS_DESC, DEP_RPT_GRP_ELEVEN, DEP_RPT_GRP_SEVENTEEN,          
-                SITE, VISIT_METHOD, VIS_NEW_TO_DEP_YN, VIS_NEW_TO_PROV_YN, SCHED_METHOD) 
-  
+                LOS_NAME, DERIVED_STATUS_DESC, DEP_RPT_GRP_ELEVEN, DEP_RPT_GRP_SEVENTEEN,
+                SITE, VISIT_METHOD, VIS_NEW_TO_DEP_YN, VIS_NEW_TO_PROV_YN, SCHED_METHOD)
+
 ```
 
 
@@ -581,10 +572,10 @@ scheduling_data <- scheduling_data %>%
   mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
          New.PT3 = ifelse(is.na(LOS_NAME), NA, ifelse(LOS_NAME %like% "INITIAL|NEW", "New", "Established")),
          enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
-  mutate(open.days = ifelse(enc.status == "OPEN", 
+  mutate(open.days = ifelse(enc.status == "OPEN",
                             TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
                             TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
-  mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" ))) 
+  mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" )))
 
 # scheduling_data <- scheduling_data %>% collect()
 ```
@@ -622,17 +613,17 @@ missing_chg_cutOff <- paste0(format(as.Date(missing_chg_cutOff), "%Y-%m-%d"), " 
 #   filter(Appt.Year >= prior_year) %>%
 #   filter(DERIVED_STATUS_DESC == "Arrived") %>%
 #   filter(VISIT_PROV_STAFF_RESOURCE_C == 1)
-# 
+#
 # missing_chg_data <- missing_chg_data %>%
 #   filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= TO_DATE(APPT_DTTM))
-# 
+#
 # missing_chg_data <- missing_chg_data %>%
 #   mutate(clo.5days = ifelse(open.days <= 5, 'YES', 'NO')) %>%
 #   group_by(Campus, DEPARTMENT_NAME, Provider, PRC_NAME, PRC_ID, Appt.Year, Appt.MonNum, enc.status, clo.5days) %>%
 #   summarise(total = n()) %>%
 #   collect()
-#   
-# missing_chg_data <- missing_chg_data %>% 
+#
+# missing_chg_data <- missing_chg_data %>%
 #   filter(DEPARTMENT_NAME %!in% exc_depts) %>%
 #   filter(Provider %!in% exc_providers) %>%
 #   filter(PRC_NAME %!in% exc_prc_name) %>%
@@ -641,8 +632,8 @@ missing_chg_cutOff <- paste0(format(as.Date(missing_chg_cutOff), "%Y-%m-%d"), " 
 #   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
 #   mutate(Appt.Year = as.character(Appt.Year)) %>%
 #   mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
-# 
-# 
+#
+#
 # missing_chg_data_trend_5days <- missing_chg_data %>%
 #   group_by(Campus, Appt.Year, Appt.MonNum, Appt.MonthYear, enc.status, clo.5days) %>%
 #   summarise(total = sum(total)) %>%
@@ -653,8 +644,8 @@ missing_chg_cutOff <- paste0(format(as.Date(missing_chg_cutOff), "%Y-%m-%d"), " 
 #               values_fill = 0) %>%
 #   mutate(clo.5days.perc = round((YES/(total.enc))*100,0)) %>%
 #   filter(enc.status == "CLOSED")
-# 
-# 
+#
+#
 # missing_chg_data_trend_downtown_5days <- missing_chg_data %>%
 #   filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>%
 #   mutate(Campus = "MS Downtown") %>%
@@ -682,20 +673,20 @@ missing_chg_data_trend_downtown_5days <- as.data.frame(readRDS("/nfs/data/Applic
 # # missing_exc_dept <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_dept.xlsx")
 # # missing_exc_resource <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_res.xlsx")
 # # missing_exc_visitType <- read_excel("/nfs/data/Applications/Ambulatory/open_encounters_exclusion_visit.xlsx")
-# 
+#
 # missing_exc_dept <- missing_enc_dept_tbl %>% collect()
 # missing_exc_resource <- missing_enc_resource_tbl %>% collect()
 # missing_exc_visitType <- missing_enc_visit_tbl %>% collect()
-# 
+#
 # exc_depts <- unique(missing_exc_dept$DEPARTMENT)
 # exc_providers <- unique(missing_exc_resource$PROVIDER)
 # exc_prc_name <- unique(missing_exc_visitType$PRC_NAME)
 # exc_prc_id <- unique(missing_exc_visitType$PRC_ID)
-# 
+#
 # start <- paste0(format(as.Date("2023-01-01"), "%Y-%m-%d"), " 00:00:00")
 # end <- missing_chg_cutOff
 # # end <- paste0(format(as.Date("2024-05-01"), "%Y-%m-%d"), " 00:00:00")
-# 
+#
 # missing_chg_data <- scheduling_data %>%
 #   filter(Appt.Year >= prior_year) %>%
 #   filter(DERIVED_STATUS_DESC == "Arrived") %>%
@@ -706,14 +697,14 @@ missing_chg_data_trend_downtown_5days <- as.data.frame(readRDS("/nfs/data/Applic
 #   # mutate(clo.5days = ifelse(open.days <= 5, 'YES', 'NO')) %>%
 #   # filter(enc.status == "OPEN") %>%
 #   dplyr::select(Campus, DEPARTMENT_NAME, DEP_RPT_GRP_ELEVEN, DEP_RPT_GRP_TWELVE,
-#                 Provider, NPI, PROV_ID,  VISIT_PROV_STAFF_RESOURCE_C, 
+#                 Provider, NPI, PROV_ID,  VISIT_PROV_STAFF_RESOURCE_C,
 #                 PAT_ENC_CSN_ID, MRN, PRC_NAME, PRC_ID, VISIT_TYPE, Appt.Year, Appt.MonNum, CONTACT_DATE, enc.status, open.days, Y_ENC_CLOSE_TIME) %>%
 #   # group_by(Campus, DEPARTMENT_NAME, Provider, PRC_NAME, PRC_ID, Appt.Year, Appt.MonNum, enc.status, open.days) %>%
 #   # summarise(total = n()) %>%
 #   collect()
-# 
-# data <- missing_chg_data 
-# 
+#
+# data <- missing_chg_data
+#
 # # missing_chg_data <- data %>%
 # #   filter(DEPARTMENT_NAME %!in% exc_depts) %>%
 # #   filter(Provider %!in% exc_providers) %>%
@@ -724,7 +715,7 @@ missing_chg_data_trend_downtown_5days <- as.data.frame(readRDS("/nfs/data/Applic
 # #   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
 # #   mutate(Appt.Year = as.character(Appt.Year)) %>%
 # #   mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
-# 
+#
 # missing_chg_data_filtered <- data %>%
 #   filter(DEPARTMENT_NAME %!in% exc_depts) %>%
 #   filter(Provider %!in% exc_providers) %>%
@@ -735,55 +726,55 @@ missing_chg_data_trend_downtown_5days <- as.data.frame(readRDS("/nfs/data/Applic
 #   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
 #   mutate(Appt.Year = as.character(Appt.Year)) %>%
 #   mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
-# 
-# 
+#
+#
 # active_staff_tbl <- tbl(conn1, "EXT_ACTIVE_STAFF")
 # active_staff <- active_staff_tbl %>% collect()
-# 
-# conn2 <- dbConnect(odbc(), 
-#                   "Clarity_prod", 
-#                   uid = "kweons01" , 
+#
+# conn2 <- dbConnect(odbc(),
+#                   "Clarity_prod",
+#                   uid = "kweons01" ,
 #                   pwd = "kweons01123$")
 # clarity_ser_tbl <- tbl(conn2, "CLARITY_SER")
 # clarity_ser <- clarity_ser_tbl %>% collect()
-# 
-# 
-# 
+#
+#
+#
 # active_staff$med_staff <- "Yes"
-# 
+#
 # missing_chg_data_filtered$med_staff <- active_staff$med_staff[match(missing_chg_data_filtered$NPI, active_staff$NPI)]
 # missing_chg_data_filtered$PROV_TYPE <- clarity_ser$PROV_TYPE[match(missing_chg_data_filtered$PROV_ID, clarity_ser$PROV_ID)]
-# 
+#
 # open_encounters <- missing_chg_data_filtered %>%
 #   filter(enc.status == "OPEN") %>%
-#   group_by(Campus, DEPARTMENT_NAME, Provider, PROV_ID, NPI, PROV_TYPE, med_staff, VISIT_PROV_STAFF_RESOURCE_C, 
+#   group_by(Campus, DEPARTMENT_NAME, Provider, PROV_ID, NPI, PROV_TYPE, med_staff, VISIT_PROV_STAFF_RESOURCE_C,
 #            enc.status, open.days) %>%
 #   summarise(total = n())
-# 
-# 
+#
+#
 # require(openxlsx)
 # write.xlsx(open_encounters, "EPIC Open Encounters_010123_052724_as of 053124.xlsx")
-# 
-# 
+#
+#
 # test <- missing_chg_data %>%
 #  filter(enc.status == "OPEN") %>%
 #   group_by(DEPARTMENT_NAME) %>%
 #   summarise(total = n())
-# 
-# 
+#
+#
 # cbo_open_encounters <- read_excel(file.choose())
 # cbo_open_encounters$in_professional <- "PB"
-# 
+#
 # missing_chg_data$in_technical <- "TB"
-# 
+#
 # cbo_open_encounters$in_technical <- missing_chg_data$in_technical[match(cbo_open_encounters$VISIT_ID, missing_chg_data$PAT_ENC_CSN_ID)]
 # missing_chg_data$in_professional <- cbo_open_encounters$in_professional[match( missing_chg_data$PAT_ENC_CSN_ID, cbo_open_encounters$VISIT_ID)]
-# 
-# 
+#
+#
 # check <- access_raw_tbl %>%
 #   filter(PAT_ENC_CSN_ID == "100155522932") %>%
 #   collect()
-# 
+#
 # check2 <- scheduling_data %>%
 #   filter(PAT_ENC_CSN_ID == "100155522932") %>%
 #   collect()
@@ -927,11 +918,11 @@ invisible(gc())
 #   mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
 #          New.PT3 = ifelse(is.na(LOS_NAME), NA, ifelse(LOC_NAME %like% "INITIAL|NEW", "New", "Established")),
 #          enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
-#   mutate(open.days = ifelse(enc.status == "OPEN", 
+#   mutate(open.days = ifelse(enc.status == "OPEN",
 #                             TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
 #                             TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
-#   mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" ))) 
-# 
+#   mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" )))
+#
 # # Format Data --------------------------
 # data <- access_raw_tbl %>%
 #   filter(DERIVED_STATUS_DESC == "Arrived") %>%
@@ -943,10 +934,10 @@ invisible(gc())
 #   collect() %>%
 #   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
 #   mutate(Appt.Year = as.character(Appt.Year))
-#   
-#   
-#   
-#   
+#
+#
+#
+#
 #   filter(DERIVED_STATUS_DESC == "Arrived") %>%
 #   filter(TO_DATE(date_start_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
 #   # filter(TO_DATE(date_end_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
@@ -955,12 +946,12 @@ invisible(gc())
 #   collect() %>%
 #   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
 #   mutate(Appt.Year = as.character(Appt.Year))
-# 
-# 
+#
+#
 # data_list <- list("Volume" = vol_trending,
 #                   "Radiology" = radiology_data_raw,
 #                   "Rad Onc" = rad_onc_data_raw)
-# 
+#
 # require(openxlsx)
 # write.xlsx(data_list, "May 2024 Data.xlsx")
 
@@ -977,21 +968,21 @@ invisible(gc())
 #   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DEP_RPT_GRP_ELEVEN, Appt.Year, Appt.MonNum, VISIT_METHOD, VISIT_GROUP_NUM, FINCLASS) %>%
 #   summarise(total = n()) %>%
 #   collect()
-# 
+#
 # volume_new <- volume %>%
 #   mutate(Appt.YearMonth = paste0(Appt.Year, "-",as.numeric(Appt.MonNum)),
 #          Appt.Month = format(as.Date(paste0(paste0(Appt.Year, "-",as.numeric(Appt.MonNum)),"-01")), "%b"))
-# 
+#
 # require(openxlsx)
 # write.xlsx(volume_new, "EPIC Volume Jan19Oct24.xlsx")
-# 
-# 
+#
+#
 # rad_radOnc_data_new <- rad_radOnc_data %>%
 #   mutate(DEP_RPT_GRP_ELEVEN = "RIS/MOSAIC",
 #          FINCLASS = "RIS/MOSAIC",
 #          Appt.YearMonth = paste0(Appt.Year, "-",as.numeric(Appt.MonNum))) %>%
 #   dplyr::select(Campus, Campus.Specialty, Department, DEP_RPT_GRP_ELEVEN, Appt.Year, Appt.MonNum, Visit.Method, FINCLASS, monthly_vol, Appt.YearMonth, Appt.Month)
-# 
+#
 # require(openxlsx)
 # write.xlsx(rad_radOnc_data_new, "RIS and MOSAIC Jan19Oct24.xlsx")
 ```
@@ -1186,7 +1177,7 @@ new_vol_trending <- new_vol %>%
 
 # new_vol_trending <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/new_vol_trending.rds"))
 
-  
+
 # Output Graphs -----------------------------
 map(unique(new_vol_trending$Campus), function(x){
 highchart() %>%
@@ -1284,7 +1275,7 @@ invisible(gc())
 ```{r Hand Hygiene Metric Trending by Site, fig.width=12, fig.height = 5, fig.align = 'center', echo = FALSE, warning = FALSE, message = FALSE}
 
 hh_site <- hh_data_merged %>%
-  mutate(Month = format(as.Date(date, format="%m/%d/%Y"), "%Y-%m")) %>%
+  mutate(Month = format(as.Date(date, format="%Y-%m-%d"), "%Y-%m")) %>%
   filter(date >= date_start & date <= Sys.Date())
 
 
@@ -1313,7 +1304,7 @@ hh_site <- hh_site %>%
 #                       Month = "2023-04",
 #                       total_obs = 0,
 #                       total_comp = 0)
-# 
+#
 # msw <- data.frame(site = "MSW",
 #                       Month = "2023-05",
 #                       total_obs = 0,
@@ -1361,8 +1352,8 @@ map(unique(hh_site$site), function(x){
   hc_tooltip(shared = TRUE, borderColor = "black")
 }) %>%
   hw_grid(ncol = 2, rowheight = 400) %>% htmltools::browsable()
-  
-  
+
+
 invisible(gc())
 
 ```
@@ -1440,16 +1431,16 @@ invisible(gc())
 # missing_ytd_data <-scheduling_data %>%
 #   filter(Appt.Year == todays_year) %>%
 #   filter(DERIVED_STATUS_DESC == "Arrived")
-# 
+#
 # missing_ytd_data <-missing_ytd_data %>%
 #   filter(VISIT_PROV_STAFF_RESOURCE_C == 1) %>%
 #   filter(TO_DATE(missing_chg_cutOff,"YYYY-MM-DD HH24:MI:SS") >= APPT_DTTM)
-# 
+#
 # missing_ytd_data <-missing_ytd_data %>%
 #   mutate(clo.5days = ifelse(open.days <= 5, 'YES', 'NO')) %>%
 #   collect()
-# 
-# 
+#
+#
 # missing_ytd_data <- missing_ytd_data %>%
 #   filter(DEPARTMENT_NAME %!in% exc_depts) %>%
 #   filter(Provider %!in% exc_providers) %>%
@@ -1461,7 +1452,7 @@ invisible(gc())
 #   mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
 
 
-missing_ytd_data <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_ytd_data.rds")) 
+missing_ytd_data <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_ytd_data.rds"))
 
 # Closed Encounters YTD
 closed_ytd_mshs <- missing_ytd_data %>%
@@ -1531,7 +1522,7 @@ missing_chg_ytd_mshs %>%
   column_spec(1, width = "200px") %>%
   column_spec(c(3:4), color = "#00b800", bold = T) %>%
   column_spec(c(7:8), color = "#ff3300", bold = T) %>%
-  add_footnote(c("*Includes Epic provider visits only; excludes NURSE, SOCIAL WORK, TREATMENT, LAB, and ECHO visits.")) 
+  add_footnote(c("*Includes Epic provider visits only; excludes NURSE, SOCIAL WORK, TREATMENT, LAB, and ECHO visits."))
 
 invisible(gc())
 ```
@@ -1617,7 +1608,7 @@ missing_chg_ytd_site %>%
   column_spec(1, width = "200px") %>%
   column_spec(c(3:4), color = "#00b800", bold = T) %>%
   column_spec(c(7:8), color = "red", bold = T) %>%
-  add_footnote(c("*Includes Epic provider visits only; excludes NURSE, SOCIAL WORK, TREATMENT, LAB, and ECHO visits.")) 
+  add_footnote(c("*Includes Epic provider visits only; excludes NURSE, SOCIAL WORK, TREATMENT, LAB, and ECHO visits."))
 
 }
 ```
@@ -1701,7 +1692,7 @@ missing_chg_ytd_dept %>%
   column_spec(c(3:4), color = "#00b800", bold = T) %>%
   column_spec(c(7:8), color = "red", bold = T) %>%
   pack_rows(index = table(missing_chg_ytd_dept$DEPT_SPECIALTY_NAME), label_row_css = "background-color: #dddedd; color: black;") %>%
-  add_footnote(c("*Includes Epic provider visits only; excludes NURSE, SOCIAL WORK, TREATMENT, LAB, and ECHO visits.")) 
+  add_footnote(c("*Includes Epic provider visits only; excludes NURSE, SOCIAL WORK, TREATMENT, LAB, and ECHO visits."))
 }
 ```
 
@@ -1727,7 +1718,7 @@ for (i in sites) {
   # # cat(" \n####", "By Site","\n")
   # print(current_last_vol_site(site = i))
   # print(current_same_vol_site(site = i))
-  # 
+  #
   # if (i %in% primary_care_sites){
   # cat(" \n###", paste0("3. ",i," Primary Care Access"),"\n")
   # # cat(" \n####", "By Site","\n")
