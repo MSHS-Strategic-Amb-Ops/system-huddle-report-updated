@@ -284,6 +284,8 @@ missing_enc_visit_tbl <- tbl(conn1, "OPEN_ENC_EXCLUSION_VISIT")
 missing_enc_resource_tbl <- tbl(conn1, "OPEN_ENC_EXCLUSION_RESOURCE")
 hh_crosswalk_tbl <- tbl(conn1, "HH_CROSSWALK") 
 
+radiology_dep_mapping_tbl <- tbl(conn1, "RADIOLOGY_DEP_MAPPING")
+
 
 ```
 
@@ -529,26 +531,26 @@ hh_data_merged <- hh_data_merged %>%
 
 
 ```{r Scheduling Data Filtering, echo = FALSE, warning = FALSE, message = FALSE}
-
-scheduling_data <- access_raw_tbl %>%
-  dplyr::select(PAT_ENC_CSN_ID, CONTACT_DATE, APPT_STATUS_NAME,
-                DEPARTMENT_ID, DEPARTMENT_NAME, DEPT_SPECIALTY_NAME,
-                PROV_ID, PROV_NAME_WID, PRC_NAME, PRC_ID, APPT_MADE_DTTM,
-                APPT_MADE_DATE, APPT_BLOCK_NAME, APPT_DTTM,
-                APPT_CANC_DTTM, APPT_CANC_DATE,
-                EM_CODE_YN, PAT_NAME,
-                MRN, VISIT_GROUP_NUM,
-                FINCLASS, VISITPAYOR, VISITPLAN,
-                VISIT_PROV_STAFF_RESOURCE_C,
-                VISIT_TYPE,
-                NPI,
-                CAMPUS,
-                Y_COSIGN_MSG, Y_CHART_COSIGN_ID, COSIGN_NAME, Y_ENC_COSIGN_TIME, Y_ENC_CLOSE_TIME,
-                Y_ENC_OPEN_TIME,
-                COS_PROV_ID, COS_PROV_NAME,
-                ENC_CLOSED_CHARGE_STATUS, PRIMARY_DX_CODE, PRIMARY_DX_NAME, LOS_CODE,
-                LOS_NAME, DERIVED_STATUS_DESC, DEP_RPT_GRP_ELEVEN, DEP_RPT_GRP_SEVENTEEN,
-                SITE, VISIT_METHOD, VIS_NEW_TO_DEP_YN, VIS_NEW_TO_PROV_YN, SCHED_METHOD)
+# 
+# scheduling_data <- access_raw_tbl %>%
+#   dplyr::select(PAT_ENC_CSN_ID, CONTACT_DATE, APPT_STATUS_NAME,
+#                 DEPARTMENT_ID, DEPARTMENT_NAME, DEPT_SPECIALTY_NAME,
+#                 PROV_ID, PROV_NAME_WID, PRC_NAME, PRC_ID, APPT_MADE_DTTM,
+#                 APPT_MADE_DATE, APPT_BLOCK_NAME, APPT_DTTM,
+#                 APPT_CANC_DTTM, APPT_CANC_DATE,
+#                 EM_CODE_YN, PAT_NAME,
+#                 MRN, VISIT_GROUP_NUM,
+#                 FINCLASS, VISITPAYOR, VISITPLAN,
+#                 VISIT_PROV_STAFF_RESOURCE_C,
+#                 VISIT_TYPE,
+#                 NPI,
+#                 CAMPUS,
+#                 Y_COSIGN_MSG, Y_CHART_COSIGN_ID, COSIGN_NAME, Y_ENC_COSIGN_TIME, Y_ENC_CLOSE_TIME,
+#                 Y_ENC_OPEN_TIME,
+#                 COS_PROV_ID, COS_PROV_NAME,
+#                 ENC_CLOSED_CHARGE_STATUS, PRIMARY_DX_CODE, PRIMARY_DX_NAME, LOS_CODE,
+#                 LOS_NAME, DERIVED_STATUS_DESC, DEP_RPT_GRP_ELEVEN, DEP_RPT_GRP_SEVENTEEN,
+#                 SITE, VISIT_METHOD, VIS_NEW_TO_DEP_YN, VIS_NEW_TO_PROV_YN, SCHED_METHOD)
 
 ```
 
@@ -556,18 +558,19 @@ scheduling_data <- access_raw_tbl %>%
 ```{r Scheduling Data Processing, echo = FALSE, warning = FALSE, message = FALSE}
 
 scheduling_data <- access_raw_tbl %>%
-  filter(PATIENT_CLASS %NOT LIKE% '%INPATIENT%') %>%
-  filter(PATIENT_CLASS %NOT LIKE% '%EMERGENCY%') %>%
+  left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, CLASS),
+            by = c("DEPARTMENT_ID")) %>%
+  mutate(radiology_check = ifelse((CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%INPATIENT%') | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%EMERGENCY%'), "Exclude", "Include")) %>%
+  mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
+  filter(radiology_check == "Include") %>%
   filter(!is.na(SITE)) %>%
-  mutate(Campus = case_when(SITE == "MSDD" ~ "MSDMG",
-                            TRUE ~ SITE)) %>%
   mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
                             DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC",
-                            TRUE ~ Campus)) %>%
-  filter(!Campus %in% c("MSB", "MS NOW", "MSHP", "OTHER", "DUBIN", "RTC", "ONCOLOGY"))
+                            TRUE ~ SITE)) %>%
+  filter(!Campus %in% c("MSB", "MS NOW", "MSHP", "OTHER", "DUBIN", "RTC", "ONCOLOGY")) 
 
 
-scheduling_data <- scheduling_data %>%
+  scheduling_data <- scheduling_data %>%
   mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
          Appt.Year = year(CONTACT_DATE),
          Appt.MonNum = month(CONTACT_DATE)) %>%
@@ -905,8 +908,10 @@ invisible(gc())
 ```{r}
 
 
-
+# 
 # scheduling_data <- access_raw_tbl %>%
+#     filter(PATIENT_CLASS %NOT LIKE% '%INPATIENT%') %>%
+#   filter(PATIENT_CLASS %NOT LIKE% '%EMERGENCY%') %>%
 #   filter(!is.na(SITE)) %>%
 #   mutate(Campus = case_when(SITE == "MSDD" ~ "MSDMG",
 #                             TRUE ~ SITE)) %>%
@@ -924,7 +929,7 @@ invisible(gc())
 #                             TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
 #                             TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
 #   mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" )))
-#
+# 
 # # Format Data --------------------------
 # data <- access_raw_tbl %>%
 #   filter(DERIVED_STATUS_DESC == "Arrived") %>%
@@ -936,10 +941,10 @@ invisible(gc())
 #   collect() %>%
 #   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
 #   mutate(Appt.Year = as.character(Appt.Year))
-#
-#
-#
-#
+# 
+# 
+# 
+# 
 #   filter(DERIVED_STATUS_DESC == "Arrived") %>%
 #   filter(TO_DATE(date_start_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
 #   # filter(TO_DATE(date_end_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
@@ -948,12 +953,12 @@ invisible(gc())
 #   collect() %>%
 #   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
 #   mutate(Appt.Year = as.character(Appt.Year))
-#
-#
+# 
+# 
 # data_list <- list("Volume" = vol_trending,
 #                   "Radiology" = radiology_data_raw,
 #                   "Rad Onc" = rad_onc_data_raw)
-#
+# 
 # require(openxlsx)
 # write.xlsx(data_list, "May 2024 Data.xlsx")
 
@@ -963,30 +968,34 @@ invisible(gc())
 ```{r Ambulatory Volume Update for Kelly, echo = FALSE, warning = FALSE, message = FALSE}
 
 # volume <- access_raw_tbl %>%
+#   # filter(PATIENT_CLASS %NOT LIKE% '%INPATIENT%') %>%
+#   # filter(PATIENT_CLASS %NOT LIKE% '%EMERGENCY%') %>%
 #   mutate(Appt.Year = year(CONTACT_DATE),
 #          Appt.MonNum = month(CONTACT_DATE)) %>%
 #   filter(DERIVED_STATUS_DESC == "Arrived") %>%
 #   filter(Appt.Year >= 2019) %>%
-#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DEP_RPT_GRP_ELEVEN, Appt.Year, Appt.MonNum, VISIT_METHOD, VISIT_GROUP_NUM, FINCLASS) %>%
+#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DEP_RPT_GRP_ELEVEN, Appt.Year, Appt.MonNum, VISIT_METHOD, VISIT_GROUP_NUM, FINCLASS, PATIENT_CLASS) %>%
 #   summarise(total = n()) %>%
 #   collect()
-#
+# 
 # volume_new <- volume %>%
 #   mutate(Appt.YearMonth = paste0(Appt.Year, "-",as.numeric(Appt.MonNum)),
 #          Appt.Month = format(as.Date(paste0(paste0(Appt.Year, "-",as.numeric(Appt.MonNum)),"-01")), "%b"))
-#
+# 
 # require(openxlsx)
-# write.xlsx(volume_new, "EPIC Volume Jan19Oct24.xlsx")
-#
-#
+# write.xlsx(volume, "Patient Class Validation.xlsx")
+# 
+# 
 # rad_radOnc_data_new <- rad_radOnc_data %>%
 #   mutate(DEP_RPT_GRP_ELEVEN = "RIS/MOSAIC",
 #          FINCLASS = "RIS/MOSAIC",
+#          Department = "RIS/MOSAIC",
+#          Visit.Method = "IN PERSON",
 #          Appt.YearMonth = paste0(Appt.Year, "-",as.numeric(Appt.MonNum))) %>%
 #   dplyr::select(Campus, Campus.Specialty, Department, DEP_RPT_GRP_ELEVEN, Appt.Year, Appt.MonNum, Visit.Method, FINCLASS, monthly_vol, Appt.YearMonth, Appt.Month)
-#
+# 
 # require(openxlsx)
-# write.xlsx(rad_radOnc_data_new, "RIS and MOSAIC Jan19Oct24.xlsx")
+# write.xlsx(rad_radOnc_data_new, "RIS and MOSAIC Jan19Nov24.xlsx")
 ```
 
 
