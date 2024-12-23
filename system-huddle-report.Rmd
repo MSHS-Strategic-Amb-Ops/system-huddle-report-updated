@@ -595,6 +595,7 @@ scheduling_data <- access_raw_tbl %>%
   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
   filter(radiology_check == "Include") %>%
   filter(!is.na(SITE)) %>%
+  mutate(Campus = SITE) %>%
   # mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
   #                           DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC",
   #                           TRUE ~ SITE)) %>%
