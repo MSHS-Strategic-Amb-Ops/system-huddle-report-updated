@@ -621,7 +621,7 @@ scheduling_data <- access_raw_tbl %>%
 # System Huddle Ambulatory Report
 *Report run date: `r report_run_date`*<br/>
 *RIS and MOSAIC data included only in monthly volumes.*<br/>
-*Increase EPIC Radiology data from May 2024~.*<br/>
+*Includes EPIC Radiology data from May 2024~.*<br/>
 *Data excludes eIDX, MD Office data.*<br/>
 ________________________________________________________________________________________________________________________________________________
 <br/>
