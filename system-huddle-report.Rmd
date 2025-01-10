@@ -1046,103 +1046,103 @@ invisible(gc())
 ```
 
 
-<!-- ### 2. Visit Volume Variance Trending -->
-<!-- ```{r Volume Variance to 2019 Metric Trending by Site, echo = FALSE, warning = FALSE, message = FALSE} -->
+### 2. Visit Volume Variance Trending
+```{r Volume Variance to 2019 Metric Trending by Site, echo = FALSE, warning = FALSE, message = FALSE}
 
-<!-- # Format Data -------------------------- -->
-<!-- vol_trending <- access_raw_tbl %>% -->
-<!--   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS), -->
-<!--             by = c("DEPARTMENT_ID")) %>% -->
-<!--   mutate(radiology_check = ifelse((DEP_CLASS == "OP") | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (DEP_CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>% -->
-<!--   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>% -->
-<!--   filter(radiology_check == "Include") %>% -->
-<!--   filter(!is.na(SITE)) %>% -->
-<!--   mutate(Campus = SITE) %>% -->
-<!--   # mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN", -->
-<!--   #                           DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC", -->
-<!--   #                           TRUE ~ SITE)) %>% -->
-<!--   filter(!Campus %in% c("MS NOW", "MSHP", "OTHER", "ONCOLOGY")) %>% -->
-<!--   mutate(Appt.DateYear = TO_DATE(CONTACT_DATE), -->
-<!--          Appt.Year = year(CONTACT_DATE), -->
-<!--          Appt.MonNum = month(CONTACT_DATE)) %>% -->
-<!--   mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"), -->
-<!--          New.PT3 = ifelse(is.na(LOS_NAME), NA, ifelse(LOS_NAME %like% "INITIAL|NEW", "New", "Established")), -->
-<!--          enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>% -->
-<!--   mutate(open.days = ifelse(enc.status == "OPEN", -->
-<!--                             TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE), -->
-<!--                             TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>% -->
-<!--   mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" ))) %>% -->
+# Format Data --------------------------
+vol_trending <- access_raw_tbl %>%
+  left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
+            by = c("DEPARTMENT_ID")) %>%
+  mutate(radiology_check = ifelse((DEP_CLASS == "OP") | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (DEP_CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
+  mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
+  filter(radiology_check == "Include") %>%
+  filter(!is.na(SITE)) %>%
+  mutate(Campus = SITE) %>%
+  # mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
+  #                           DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC",
+  #                           TRUE ~ SITE)) %>%
+  filter(!Campus %in% c("MS NOW", "MSHP", "OTHER", "ONCOLOGY")) %>%
+  mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
+         Appt.Year = year(CONTACT_DATE),
+         Appt.MonNum = month(CONTACT_DATE)) %>%
+  mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
+         New.PT3 = ifelse(is.na(LOS_NAME), NA, ifelse(LOS_NAME %like% "INITIAL|NEW", "New", "Established")),
+         enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
+  mutate(open.days = ifelse(enc.status == "OPEN",
+                            TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
+                            TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
+  mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" ))) %>%
 
-<!--   filter(DERIVED_STATUS_DESC == "Arrived") %>% -->
-<!--   filter(TO_DATE(date_start_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>% -->
-<!--   # filter(TO_DATE(date_end_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>% -->
-<!--   group_by(Campus, Appt.Year, Appt.MonNum) %>% -->
-<!--   summarise(total = n()) %>% -->
-<!--   collect() %>% -->
-<!--   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>% -->
-<!--   mutate(Appt.Year = as.character(Appt.Year)) -->
+  filter(DERIVED_STATUS_DESC == "Arrived") %>%
+  filter(TO_DATE(date_start_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
+  # filter(TO_DATE(date_end_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
+  group_by(Campus, Appt.Year, Appt.MonNum) %>%
+  summarise(total = n()) %>%
+  collect() %>%
+  mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+  mutate(Appt.Year = as.character(Appt.Year))
 
-<!-- # Merge with radiology and rad onc monthly volume -->
-<!-- vol_trending <- bind_rows(vol_trending, rad_radOnc_data) -->
-<!-- vol_trending <- vol_trending %>% -->
-<!--   group_by(Campus, Appt.Year, Appt.Month) %>% -->
-<!--   summarise(total = sum(total)) %>% -->
-<!--   pivot_wider(names_from = Appt.Year, -->
-<!--               values_from = total) %>% -->
-<!--   # mutate(target_5_perc = round(`2022`*1.05)) %>% -->
-<!--   arrange(factor(Appt.Month, levels = monthOptions)) %>% -->
-<!--   arrange(Campus) %>% -->
-<!--   mutate(perc_change = round(((`2025` - `2024`)/`2024`)*100, 0)) -->
+# Merge with radiology and rad onc monthly volume
+vol_trending <- bind_rows(vol_trending, rad_radOnc_data)
+vol_trending <- vol_trending %>%
+  group_by(Campus, Appt.Year, Appt.Month) %>%
+  summarise(total = sum(total)) %>%
+  pivot_wider(names_from = Appt.Year,
+              values_from = total) %>%
+  # mutate(target_5_perc = round(`2022`*1.05)) %>%
+  arrange(factor(Appt.Month, levels = monthOptions)) %>%
+  arrange(Campus) %>%
+  mutate(perc_change = round(((`2025` - `2024`)/`2024`)*100, 0))
 
 
-<!-- # Output Graphs ------------------------ -->
-<!-- map(unique(vol_trending$Campus), function(x){ -->
-<!-- highchart() %>% -->
-<!--   hc_yAxis_multiples( -->
-<!--     list(title = list(text = "Total Visits"), lineWidth = 3, min = 0), -->
-<!--     list(title = list(text = "% Change from Prior Year"), min = -50,max=200, -->
-<!--            labels = list(format = '{value}%'), -->
-<!--            showLastLabel = FALSE, opposite = TRUE) -->
-<!--   ) %>% -->
-<!--   hc_xAxis(title = list(text = ""), -->
-<!--            categories = (vol_trending %>% filter(Campus == x))$Appt.Month, -->
-<!--            type = "datetime", -->
-<!--            labels = list(format = '{value:%m/%d}') -->
-<!--            # dateTimeLabelFormats = list(month = '%Y-%m') -->
-<!--            ) %>% -->
-<!--   hc_add_series(name   = "2024 Total Visits", -->
-<!--                 data   = (vol_trending %>% filter(Campus == x))$`2024`, -->
-<!--                 # type = 'column', -->
-<!--                 # color = '#a5a7a5' -->
-<!--                 marker = list(enabled= TRUE), -->
-<!--                 color='#a5a7a5', -->
-<!--                 lineWidth=3, -->
-<!--                 lineColor='#a5a7a5' -->
-<!--                 ) %>% -->
-<!--   hc_add_series(name = "2025 Total Visits", -->
-<!--                 data   = (vol_trending %>% filter(Campus == x))$`2025`, -->
-<!--                 marker = list(enabled= TRUE), -->
-<!--                 color='#212070', -->
-<!--                 lineWidth=3, -->
-<!--                 lineColor='#212070' -->
-<!--                 ) %>% -->
-<!--   hc_add_series(name = "% Change from Prior Year", -->
-<!--                 data = (vol_trending %>% filter(Campus == x))$perc_change, -->
-<!--                 type = "column", yAxis = 1, -->
-<!--                                 zones = list(list(value = 0, -->
-<!--                                   color = 'red')), -->
-<!--                 color='#00b800', -->
-<!--                 # lineColor='#d80b8c', -->
-<!--                 dataLabels = list(enabled = TRUE, format='{point.y}%')) %>% -->
-<!--   hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>% -->
-<!--     hc_title(text = paste0(x, " - Visit Volume Variance"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>% -->
-<!--     hc_subtitle(text = paste0("Includes Radiology and Rad Onc visits up to ",rad_onc_date,"<br> Based on visits from ",date_start," to ",date_end), -->
-<!--               align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>% -->
-<!--     hc_tooltip(shared = TRUE, borderColor = "black") -->
-<!--   }) %>% -->
-<!--   hw_grid(ncol = 2, rowheight = 400) %>% htmltools::browsable() -->
+# Output Graphs ------------------------
+map(unique(vol_trending$Campus), function(x){
+highchart() %>%
+  hc_yAxis_multiples(
+    list(title = list(text = "Total Visits"), lineWidth = 3, min = 0),
+    list(title = list(text = "% Change from Prior Year"), min = -50,max=200,
+           labels = list(format = '{value}%'),
+           showLastLabel = FALSE, opposite = TRUE)
+  ) %>%
+  hc_xAxis(title = list(text = ""),
+           categories = (vol_trending %>% filter(Campus == x))$Appt.Month,
+           type = "datetime",
+           labels = list(format = '{value:%m/%d}')
+           # dateTimeLabelFormats = list(month = '%Y-%m')
+           ) %>%
+  hc_add_series(name   = "2024 Total Visits",
+                data   = (vol_trending %>% filter(Campus == x))$`2024`,
+                # type = 'column',
+                # color = '#a5a7a5'
+                marker = list(enabled= TRUE),
+                color='#a5a7a5',
+                lineWidth=3,
+                lineColor='#a5a7a5'
+                ) %>%
+  hc_add_series(name = "2025 Total Visits",
+                data   = (vol_trending %>% filter(Campus == x))$`2025`,
+                marker = list(enabled= TRUE),
+                color='#212070',
+                lineWidth=3,
+                lineColor='#212070'
+                ) %>%
+  hc_add_series(name = "% Change from Prior Year",
+                data = (vol_trending %>% filter(Campus == x))$perc_change,
+                type = "column", yAxis = 1,
+                                zones = list(list(value = 0,
+                                  color = 'red')),
+                color='#00b800',
+                # lineColor='#d80b8c',
+                dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
+  hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
+    hc_title(text = paste0(x, " - Visit Volume Variance"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+    hc_subtitle(text = paste0("Includes Radiology and Rad Onc visits up to ",rad_onc_date,"<br> Based on visits from ",date_start," to ",date_end),
+              align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
+    hc_tooltip(shared = TRUE, borderColor = "black")
+  }) %>%
+  hw_grid(ncol = 2, rowheight = 400) %>% htmltools::browsable()
 
-<!-- ``` -->
+```
 
 <!-- -------------------------------------------------------------------------------- -->
 
