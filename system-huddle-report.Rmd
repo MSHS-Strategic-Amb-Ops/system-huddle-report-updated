@@ -564,11 +564,11 @@ hh_data_merged <- hh_data_merged %>%
 #    mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
 #          Appt.Year = year(CONTACT_DATE),
 #          Appt.MonNum = month(CONTACT_DATE)) %>%
-#   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, CLASS),
+#   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
 #             by = c("DEPARTMENT_ID")) %>%
-#   mutate(radiology_check = ifelse((CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%INPATIENT%') | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%EMERGENCY%'), "Exclude", "Include")) %>%
+#   mutate(radiology_check = ifelse((DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%INPATIENT%') | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%EMERGENCY%'), "Exclude", "Include")) %>%
 #   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
-#   group_by(SITE, Appt.Year, Appt.MonNum, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, PATIENT_CLASS, CLASS, radiology_check) %>%
+#   group_by(SITE, Appt.Year, Appt.MonNum, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, PATIENT_CLASS, DEP_CLASS, radiology_check) %>%
 #   summarise(total = n()) %>%
 #   collect()
 # 
@@ -587,14 +587,14 @@ hh_data_merged <- hh_data_merged %>%
 #               values_from = Appt.MonNum)
 
 # scheduling_data <- access_raw_tbl %>%
-#   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, CLASS),
+#   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
 #             by = c("DEPARTMENT_ID")) %>%
-#   mutate(radiology_check = ifelse((CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%INPATIENT%') | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%EMERGENCY%'), "Exclude", "Include")) %>%
+#   mutate(radiology_check = ifelse((DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%INPATIENT%') | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%EMERGENCY%'), "Exclude", "Include")) %>%
 #   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
 #   mutate(appt_year = year(CONTACT_DATE),
 #          appt_month = month(CONTACT_DATE)) %>%
 #   filter(DERIVED_STATUS_DESC == "Arrived") %>%
-#   group_by(SITE, DEPT_SPECIALTY_NAME,  DEPARTMENT_NAME, appt_year, appt_month, radiology_check, CLASS, PATIENT_CLASS) %>%
+#   group_by(SITE, DEPT_SPECIALTY_NAME,  DEPARTMENT_NAME, appt_year, appt_month, radiology_check, DEP_CLASS, PATIENT_CLASS) %>%
 #   summarise(total = n()) %>%
 #   collect()
 # 
@@ -604,10 +604,12 @@ hh_data_merged <- hh_data_merged %>%
 # require(openxlsx)
 # write.xlsx(data_list, "Radiology Data RIS vs. EPIC Comparison.xlsx")
 
+# check <- radiology_dep_mapping_tbl %>% collect()
+
 # scheduling_data <- access_raw_tbl %>%
-#   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, CLASS),
+#   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
 #             by = c("DEPARTMENT_ID")) %>%
-#   mutate(radiology_check = ifelse((CLASS == "OP") | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
+#   mutate(radiology_check = ifelse((DEP_CLASS == "OP") | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (DEP_CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
 #   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
 #   filter(radiology_check == "Include") %>%
 #   filter(!is.na(SITE)) %>%
@@ -1049,9 +1051,9 @@ invisible(gc())
 
 # Format Data --------------------------
 vol_trending <- access_raw_tbl %>%
-  left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, CLASS),
+  left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
             by = c("DEPARTMENT_ID")) %>%
-  mutate(radiology_check = ifelse((CLASS == "OP") | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
+  mutate(radiology_check = ifelse((DEP_CLASS == "OP") | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (DEP_CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
   filter(radiology_check == "Include") %>%
   filter(!is.na(SITE)) %>%
@@ -1148,9 +1150,9 @@ highchart() %>%
 
 # Format Data --------------------------
 vol_trending_downtown <- access_raw_tbl %>%
-  left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, CLASS),
+  left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
             by = c("DEPARTMENT_ID")) %>%
-  mutate(radiology_check = ifelse((CLASS == "OP") | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
+  mutate(radiology_check = ifelse((DEP_CLASS == "OP") | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (DEP_CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
   filter(radiology_check == "Include") %>%
   filter(!is.na(SITE)) %>%
@@ -1255,9 +1257,9 @@ invisible(gc())
 
 # Format Data ------------------------------
 new_vol <- access_raw_tbl %>%
-  left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, CLASS),
+  left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
             by = c("DEPARTMENT_ID")) %>%
-  mutate(radiology_check = ifelse((CLASS == "OP") | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
+  mutate(radiology_check = ifelse((DEP_CLASS == "OP") | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (DEP_CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
   filter(radiology_check == "Include") %>%
   filter(!is.na(SITE)) %>%
