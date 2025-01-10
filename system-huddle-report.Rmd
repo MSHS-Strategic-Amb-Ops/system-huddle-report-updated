@@ -586,12 +586,28 @@ hh_data_merged <- hh_data_merged %>%
 #   pivot_wider(names_from = Appt.Year,
 #               values_from = Appt.MonNum)
 
-
+# scheduling_data <- access_raw_tbl %>%
+#   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, CLASS),
+#             by = c("DEPARTMENT_ID")) %>%
+#   mutate(radiology_check = ifelse((CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%INPATIENT%') | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%EMERGENCY%'), "Exclude", "Include")) %>%
+#   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
+#   mutate(appt_year = year(CONTACT_DATE),
+#          appt_month = month(CONTACT_DATE)) %>%
+#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
+#   group_by(SITE, DEPT_SPECIALTY_NAME,  DEPARTMENT_NAME, appt_year, appt_month, radiology_check, CLASS, PATIENT_CLASS) %>%
+#   summarise(total = n()) %>%
+#   collect()
+# 
+# data_list <- list("RIS Data" = radiology_data_raw,
+#                   "EPIC Data" = scheduling_data)
+# 
+# require(openxlsx)
+# write.xlsx(data_list, "Radiology Data RIS vs. EPIC Comparison.xlsx")
 
 scheduling_data <- access_raw_tbl %>%
   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, CLASS),
             by = c("DEPARTMENT_ID")) %>%
-  mutate(radiology_check = ifelse((CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%INPATIENT%') | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%EMERGENCY%'), "Exclude", "Include")) %>%
+  mutate(radiology_check = ifelse((CLASS == "OP") | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
   filter(radiology_check == "Include") %>%
   filter(!is.na(SITE)) %>%
@@ -1055,7 +1071,7 @@ vol_trending <- vol_trending %>%
   # mutate(target_5_perc = round(`2022`*1.05)) %>%
   arrange(factor(Appt.Month, levels = monthOptions)) %>%
   arrange(Campus) %>%
-  mutate(perc_change = round(((`2024` - `2023`)/`2023`)*100, 0))
+  mutate(perc_change = round(((`2025` - `2024`)/`2024`)*100, 0))
 
 
 # Output Graphs ------------------------
@@ -1073,8 +1089,8 @@ highchart() %>%
            labels = list(format = '{value:%m/%d}')
            # dateTimeLabelFormats = list(month = '%Y-%m')
            ) %>%
-  hc_add_series(name   = "2023 Total Visits",
-                data   = (vol_trending %>% filter(Campus == x))$`2023`,
+  hc_add_series(name   = "2024 Total Visits",
+                data   = (vol_trending %>% filter(Campus == x))$`2024`,
                 # type = 'column',
                 # color = '#a5a7a5'
                 marker = list(enabled= TRUE),
@@ -1082,8 +1098,8 @@ highchart() %>%
                 lineWidth=3,
                 lineColor='#a5a7a5'
                 ) %>%
-  hc_add_series(name = "2024 Total Visits",
-                data   = (vol_trending %>% filter(Campus == x))$`2024`,
+  hc_add_series(name = "2025 Total Visits",
+                data   = (vol_trending %>% filter(Campus == x))$`2025`,
                 marker = list(enabled= TRUE),
                 color='#212070',
                 lineWidth=3,
@@ -1135,7 +1151,7 @@ vol_trending_downtown <- vol_trending_downtown %>%
   # mutate(target_5_perc = round(`2022`*1.05)) %>%
   arrange(factor(Appt.Month, levels = monthOptions)) %>%
   arrange(Campus) %>%
-  mutate(perc_change = round(((`2024` - `2023`)/`2023`)*100, 0))
+  mutate(perc_change = round(((`2025` - `2024`)/`2024`)*100, 0))
 
 
 # Output Graphs ------------------------
@@ -1153,8 +1169,8 @@ highchart() %>%
            labels = list(format = '{value:%m/%d}')
            # dateTimeLabelFormats = list(month = '%Y-%m')
            ) %>%
-  hc_add_series(name   = "2023 Total Visits",
-                data   = (vol_trending_downtown %>% filter(Campus == x))$`2023`,
+  hc_add_series(name   = "2024 Total Visits",
+                data   = (vol_trending_downtown %>% filter(Campus == x))$`2024`,
                 # type = 'column',
                 # color = '#a5a7a5'
                 marker = list(enabled= TRUE),
@@ -1162,8 +1178,8 @@ highchart() %>%
                 lineWidth=3,
                 lineColor='#a5a7a5'
                 ) %>%
-  hc_add_series(name = "2024 Total Visits",
-                data   = (vol_trending_downtown %>% filter(Campus == x))$`2024`,
+  hc_add_series(name = "2025 Total Visits",
+                data   = (vol_trending_downtown %>% filter(Campus == x))$`2025`,
                 marker = list(enabled= TRUE),
                 color='#212070',
                 lineWidth=3,
