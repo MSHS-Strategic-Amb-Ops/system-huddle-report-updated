@@ -1652,90 +1652,90 @@ invisible(gc())
 ```
 
 
-```{r Site Epic Open Encounters, echo = FALSE, warning = FALSE, message = FALSE}
-# Epic unlocked notes YTD
-open_encounters_site <- function(site){
+<!-- ```{r Site Epic Open Encounters, echo = FALSE, warning = FALSE, message = FALSE} -->
+<!-- # Epic unlocked notes YTD -->
+<!-- open_encounters_site <- function(site){ -->
 
-  # site <- "MSUS"
+<!--   # site <- "MSUS" -->
 
-# Closed Encounters YTD
-closed_ytd_site <- missing_ytd_data %>%
-  filter(Campus == site) %>%
-  filter(enc.status == "CLOSED") %>%
-  group_by(Campus) %>%
-  summarise(clo.count = n())
-closed_3days_site <- missing_ytd_data %>%
-  filter(Campus == site) %>%
-  filter(enc.status == "CLOSED") %>%
-  filter(open.days <=3) %>%
-  group_by(Campus) %>%
-  summarise(clo.3days = n())
-closed_5days_site <- missing_ytd_data %>%
-  filter(Campus == site) %>%
-  filter(enc.status == "CLOSED") %>%
-  filter(open.days <=5) %>%
-  group_by(Campus) %>%
-  summarise(clo.5days = n())
-# Open Encounters YTD
-open_ytd_site <- missing_ytd_data %>%
-  filter(Campus == site) %>%
-  filter(enc.status == "OPEN") %>%
-  group_by(Campus) %>%
-  summarise(open.count = n(),
-            enc.open.time = paste0(median(open.days), " days"))
-open_3days_site <- missing_ytd_data %>%
-  filter(Campus == site) %>%
-  filter(enc.status == "OPEN") %>%
-  filter(open.days >3) %>%
-  group_by(Campus) %>%
-  summarise(open.3days = n())
-open_5days_site <- missing_ytd_data %>%
-  filter(Campus == site) %>%
-  filter(enc.status == "OPEN") %>%
-  filter(open.days >5) %>%
-  group_by(Campus) %>%
-  summarise(open.5days = n())
-# rm(missing_ytd_data)
-missing_chg_ytd_site <- Reduce(function(x, y) merge(x, y, all=TRUE), list(closed_ytd_site, closed_3days_site, closed_5days_site, open_ytd_site, open_3days_site, open_5days_site))
-missing_chg_ytd_site[is.na(missing_chg_ytd_site)] <- 0
-missing_chg_ytd_site <- missing_chg_ytd_site %>%
-  mutate(total.count = clo.count + open.count,
-         closed.3days.perc = percent(clo.3days/total.count,0),
-         closed.5days.perc = percent(clo.5days/total.count,0),
-         open.3days.perc = percent(open.3days/open.count,0),
-         open.5days.perc = percent(open.5days/open.count,0)) %>%
-  dplyr::select(Campus, total.count, closed.3days.perc, closed.5days.perc, open.count, enc.open.time, open.3days.perc, open.5days.perc)
-col_names <- c("Site",paste0(todays_year," YTD Total Encounters"), "% of Encounters Closed <=3 Days", "% of Encounters Closed <=5 Days",
-               paste0(todays_year, " YTD Open Encounters"), "Median Open Encounter Time",
-               "% of Open Encounters >3 Days", "% of Open Encounters >5 Days")
-header_above <- c("title" = length(missing_chg_ytd_site))
-names(header_above) <- paste0(site," ",todays_year," YTD Open Encounters")
-header_above_2 <- c("title" = length(missing_chg_ytd_site))
-names(header_above_2) <- paste0("Opened Encounters from ",
-                              min(missing_ytd_data$Appt.DateYear)," to ",as.Date(missing_chg_cutOff))
-missing_chg_ytd_site %>%
-  dplyr::select(everything()) %>%
-    # mutate(open.perc = color_tile("lightpink","red")(open.perc),
-    #      open.3days.perc = color_tile("lightpink","red")(open.3days.perc),
-    #      open.5days.perc = color_tile("lightpink","red")(open.5days.perc)) %>%
-  mutate_if(is.numeric, prettyNum, big.mark = ',') %>%
-  # mutate_if(str_detect("%"), function(x) {
-  # cell_spec(color = ifelse(str_detect("-", "#ff3300", "#00b800")))})
-  kable(escape = F, align = c("r",rep(c("c"),length(missing_chg_ytd_site)-1)),
-        col.names = col_names) %>%
-  kable_styling(bootstrap_options = "hover", full_width = FALSE, position = "center", row_label_position = "c", font_size = 14) %>%
-  add_header_above(c(" ", "Total Encounters" = 3,  "Open Encounters" = 4), background = c("white","#221f72","#00aeef"), color = "white", font_size = 14) %>%
-  add_header_above(header_above_2, background = "white", color = "black", font_size = 16, bold = T, align = "c", italic = T) %>%
-  add_header_above(header_above, background = "white", color = "black", font_size = 22, bold = T, align = "c", line = FALSE) %>%
-  column_spec(2:4, background = "#EBEBF9", width = "150px") %>%
-  column_spec(5:8, background = "#E6F8FF", width = "150px") %>%
-  column_spec(1, width = "200px") %>%
-  column_spec(c(3:4), color = "#00b800", bold = T) %>%
-  column_spec(c(7:8), color = "red", bold = T) %>%
-  add_footnote(c("*Includes Epic provider visits only; excludes NURSE, SOCIAL WORK, TREATMENT, LAB, and ECHO visits."))
+<!-- # Closed Encounters YTD -->
+<!-- closed_ytd_site <- missing_ytd_data %>% -->
+<!--   filter(Campus == site) %>% -->
+<!--   filter(enc.status == "CLOSED") %>% -->
+<!--   group_by(Campus) %>% -->
+<!--   summarise(clo.count = n()) -->
+<!-- closed_3days_site <- missing_ytd_data %>% -->
+<!--   filter(Campus == site) %>% -->
+<!--   filter(enc.status == "CLOSED") %>% -->
+<!--   filter(open.days <=3) %>% -->
+<!--   group_by(Campus) %>% -->
+<!--   summarise(clo.3days = n()) -->
+<!-- closed_5days_site <- missing_ytd_data %>% -->
+<!--   filter(Campus == site) %>% -->
+<!--   filter(enc.status == "CLOSED") %>% -->
+<!--   filter(open.days <=5) %>% -->
+<!--   group_by(Campus) %>% -->
+<!--   summarise(clo.5days = n()) -->
+<!-- # Open Encounters YTD -->
+<!-- open_ytd_site <- missing_ytd_data %>% -->
+<!--   filter(Campus == site) %>% -->
+<!--   filter(enc.status == "OPEN") %>% -->
+<!--   group_by(Campus) %>% -->
+<!--   summarise(open.count = n(), -->
+<!--             enc.open.time = paste0(median(open.days), " days")) -->
+<!-- open_3days_site <- missing_ytd_data %>% -->
+<!--   filter(Campus == site) %>% -->
+<!--   filter(enc.status == "OPEN") %>% -->
+<!--   filter(open.days >3) %>% -->
+<!--   group_by(Campus) %>% -->
+<!--   summarise(open.3days = n()) -->
+<!-- open_5days_site <- missing_ytd_data %>% -->
+<!--   filter(Campus == site) %>% -->
+<!--   filter(enc.status == "OPEN") %>% -->
+<!--   filter(open.days >5) %>% -->
+<!--   group_by(Campus) %>% -->
+<!--   summarise(open.5days = n()) -->
+<!-- # rm(missing_ytd_data) -->
+<!-- missing_chg_ytd_site <- Reduce(function(x, y) merge(x, y, all=TRUE), list(closed_ytd_site, closed_3days_site, closed_5days_site, open_ytd_site, open_3days_site, open_5days_site)) -->
+<!-- missing_chg_ytd_site[is.na(missing_chg_ytd_site)] <- 0 -->
+<!-- missing_chg_ytd_site <- missing_chg_ytd_site %>% -->
+<!--   mutate(total.count = clo.count + open.count, -->
+<!--          closed.3days.perc = percent(clo.3days/total.count,0), -->
+<!--          closed.5days.perc = percent(clo.5days/total.count,0), -->
+<!--          open.3days.perc = percent(open.3days/open.count,0), -->
+<!--          open.5days.perc = percent(open.5days/open.count,0)) %>% -->
+<!--   dplyr::select(Campus, total.count, closed.3days.perc, closed.5days.perc, open.count, enc.open.time, open.3days.perc, open.5days.perc) -->
+<!-- col_names <- c("Site",paste0(todays_year," YTD Total Encounters"), "% of Encounters Closed <=3 Days", "% of Encounters Closed <=5 Days", -->
+<!--                paste0(todays_year, " YTD Open Encounters"), "Median Open Encounter Time", -->
+<!--                "% of Open Encounters >3 Days", "% of Open Encounters >5 Days") -->
+<!-- header_above <- c("title" = length(missing_chg_ytd_site)) -->
+<!-- names(header_above) <- paste0(site," ",todays_year," YTD Open Encounters") -->
+<!-- header_above_2 <- c("title" = length(missing_chg_ytd_site)) -->
+<!-- names(header_above_2) <- paste0("Opened Encounters from ", -->
+<!--                               min(missing_ytd_data$Appt.DateYear)," to ",as.Date(missing_chg_cutOff)) -->
+<!-- missing_chg_ytd_site %>% -->
+<!--   dplyr::select(everything()) %>% -->
+<!--     # mutate(open.perc = color_tile("lightpink","red")(open.perc), -->
+<!--     #      open.3days.perc = color_tile("lightpink","red")(open.3days.perc), -->
+<!--     #      open.5days.perc = color_tile("lightpink","red")(open.5days.perc)) %>% -->
+<!--   mutate_if(is.numeric, prettyNum, big.mark = ',') %>% -->
+<!--   # mutate_if(str_detect("%"), function(x) { -->
+<!--   # cell_spec(color = ifelse(str_detect("-", "#ff3300", "#00b800")))}) -->
+<!--   kable(escape = F, align = c("r",rep(c("c"),length(missing_chg_ytd_site)-1)), -->
+<!--         col.names = col_names) %>% -->
+<!--   kable_styling(bootstrap_options = "hover", full_width = FALSE, position = "center", row_label_position = "c", font_size = 14) %>% -->
+<!--   add_header_above(c(" ", "Total Encounters" = 3,  "Open Encounters" = 4), background = c("white","#221f72","#00aeef"), color = "white", font_size = 14) %>% -->
+<!--   add_header_above(header_above_2, background = "white", color = "black", font_size = 16, bold = T, align = "c", italic = T) %>% -->
+<!--   add_header_above(header_above, background = "white", color = "black", font_size = 22, bold = T, align = "c", line = FALSE) %>% -->
+<!--   column_spec(2:4, background = "#EBEBF9", width = "150px") %>% -->
+<!--   column_spec(5:8, background = "#E6F8FF", width = "150px") %>% -->
+<!--   column_spec(1, width = "200px") %>% -->
+<!--   column_spec(c(3:4), color = "#00b800", bold = T) %>% -->
+<!--   column_spec(c(7:8), color = "red", bold = T) %>% -->
+<!--   add_footnote(c("*Includes Epic provider visits only; excludes NURSE, SOCIAL WORK, TREATMENT, LAB, and ECHO visits.")) -->
 
-}
-```
+<!-- } -->
+<!-- ``` -->
 
 
 <!-- ```{r Department Epic Open Encounters, echo = FALSE, warning = FALSE, message = FALSE} -->
