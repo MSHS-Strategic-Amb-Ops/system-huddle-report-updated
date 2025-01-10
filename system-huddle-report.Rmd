@@ -607,7 +607,6 @@ hh_data_merged <- hh_data_merged %>%
 # scheduling_data <- access_raw_tbl %>%
 #   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, CLASS),
 #             by = c("DEPARTMENT_ID")) %>%
-#   show_query()
 #   mutate(radiology_check = ifelse((CLASS == "OP") | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
 #   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
 #   filter(radiology_check == "Include") %>%
@@ -1052,7 +1051,6 @@ invisible(gc())
 vol_trending <- access_raw_tbl %>%
   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, CLASS),
             by = c("DEPARTMENT_ID")) %>%
-  show_query()
   mutate(radiology_check = ifelse((CLASS == "OP") | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
   filter(radiology_check == "Include") %>%
@@ -1152,7 +1150,6 @@ highchart() %>%
 vol_trending_downtown <- access_raw_tbl %>%
   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, CLASS),
             by = c("DEPARTMENT_ID")) %>%
-  show_query()
   mutate(radiology_check = ifelse((CLASS == "OP") | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
   filter(radiology_check == "Include") %>%
@@ -1260,7 +1257,6 @@ invisible(gc())
 new_vol <- access_raw_tbl %>%
   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, CLASS),
             by = c("DEPARTMENT_ID")) %>%
-  show_query()
   mutate(radiology_check = ifelse((CLASS == "OP") | (CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
   filter(radiology_check == "Include") %>%
