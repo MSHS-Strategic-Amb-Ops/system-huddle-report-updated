@@ -25,6 +25,8 @@ rmarkdown::render(input = "system-huddle-report.Rmd",
                   output_dir = "/nfs/data/Applications/Ambulatory/",
                   params = list(output_dir = "/nfs/data/Applications/Ambulatory/"))
 
+print("Rendering complete.")
+
 
 # rmarkdown::render("system-huddle-all.Rmd", 
 #                   output_file = '/nfs/data/Applications/Ambulatory/out.html')

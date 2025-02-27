@@ -606,28 +606,28 @@ hh_data_merged <- hh_data_merged %>%
 
 # check <- radiology_dep_mapping_tbl %>% collect()
 
-# scheduling_data <- access_raw_tbl %>%
-#   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
-#             by = c("DEPARTMENT_ID")) %>%
-#   mutate(radiology_check = ifelse((DEP_CLASS == "OP") | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (DEP_CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
-#   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
-#   filter(radiology_check == "Include") %>%
-#   filter(!is.na(SITE)) %>%
-#   mutate(Campus = SITE) %>%
-#   # mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
-#   #                           DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC",
-#   #                           TRUE ~ SITE)) %>%
-#   filter(!Campus %in% c("MS NOW", "MSHP", "OTHER", "ONCOLOGY")) %>%
-#   mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
-#          Appt.Year = year(CONTACT_DATE),
-#          Appt.MonNum = month(CONTACT_DATE)) %>%
-#   mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
-#          New.PT3 = ifelse(is.na(LOS_NAME), NA, ifelse(LOS_NAME %like% "INITIAL|NEW", "New", "Established")),
-#          enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
-#   mutate(open.days = ifelse(enc.status == "OPEN",
-#                             TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
-#                             TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
-#   mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" )))
+scheduling_data <- tbl(conn1, "MV_DM_PATIENT_ACCESS") %>%
+  left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
+            by = c("DEPARTMENT_ID")) %>%
+  mutate(radiology_check = ifelse((DEP_CLASS == "OP") | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (DEP_CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
+  mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
+  filter(radiology_check == "Include") %>%
+  filter(!is.na(SITE)) %>%
+  mutate(Campus = SITE) %>%
+  # mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
+  #                           DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC",
+  #                           TRUE ~ SITE)) %>%
+  filter(!Campus %in% c("MS NOW", "MSHP", "OTHER", "ONCOLOGY")) %>%
+  mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
+         Appt.Year = year(CONTACT_DATE),
+         Appt.MonNum = month(CONTACT_DATE)) %>%
+  mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
+         New.PT3 = ifelse(is.na(LOS_NAME), NA, ifelse(LOS_NAME %like% "INITIAL|NEW", "New", "Established")),
+         enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
+  mutate(open.days = ifelse(enc.status == "OPEN",
+                            TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
+                            TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
+  mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" )))
 
 # scheduling_data <- scheduling_data %>% collect()
 ```
@@ -1337,216 +1337,216 @@ highchart() %>%
   hw_grid(ncol = 2, rowheight = 400) %>% htmltools::browsable()
 ```
 
-<!-- -------------------------------------------------------------------------------- -->
-<!-- ```{r New Patient Volume Trending Summarized, echo = FALSE, warning = FALSE, message = FALSE} -->
+--------------------------------------------------------------------------------
+```{r New Patient Volume Trending Summarized, echo = FALSE, warning = FALSE, message = FALSE}
 
-<!-- # Format Data ------------------------------ -->
-<!-- new_vol_trending_downtown <- new_vol %>% -->
-<!--   filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>% -->
-<!--   mutate(Campus = "MS Downtown") %>% -->
-<!--   group_by(Campus, Appt.Year, Appt.MonNum, New.PT3) %>% -->
-<!--   summarise(total = sum(total)) %>% -->
-<!--   pivot_wider(names_from = New.PT3, -->
-<!--               values_from = total, -->
-<!--               values_fill = 0) %>% -->
-<!--   mutate(total_vol = `New` + `Established`, -->
-<!--          new_perc = round((New/(total_vol))*100,0)) %>% -->
-<!--   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>% -->
-<!--   mutate(Appt.Year = as.character(Appt.Year)) %>% -->
-<!--   mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year)) -->
+# Format Data ------------------------------
+new_vol_trending_downtown <- new_vol %>%
+  filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>%
+  mutate(Campus = "MS Downtown") %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, New.PT3) %>%
+  summarise(total = sum(total)) %>%
+  pivot_wider(names_from = New.PT3,
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(total_vol = `New` + `Established`,
+         new_perc = round((New/(total_vol))*100,0)) %>%
+  mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+  mutate(Appt.Year = as.character(Appt.Year)) %>%
+  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
 
-<!-- # new_vol_trending_downtown <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/new_vol_trending_downtown.rds")) -->
-
-
-<!-- # Output Graphs ------------------------------ -->
-<!-- map(unique(new_vol_trending_downtown$Campus), function(x){ -->
-<!-- highchart() %>% -->
-<!--   hc_yAxis_multiples( -->
-<!--     list(title = list(text = "Total Visits"), lineWidth = 3), -->
-<!--     list(title = list(text = "% of New Visits"), labels = list(format = '{value}%'), -->
-<!--          showLastLabel = FALSE, opposite = TRUE) -->
-<!--   ) %>% -->
-<!--   hc_xAxis(title = list(text = ""), -->
-<!--            # categories = (new_vol_trending_downtown %>% filter(Campus == x))$Appt.MonthYear, -->
-<!--            categories = new_vol_trending_downtown$Appt.MonthYear, -->
-<!--            type = "datetime", -->
-<!--            labels = list(format = '{value:%m/%d}') -->
-<!--            # dateTimeLabelFormats = list(month = '%Y-%m') -->
-<!--            ) %>% -->
-<!--   hc_add_series(name = "Total Visits", -->
-<!--                 data = (new_vol_trending_downtown %>% filter(Campus == x))$total_vol, -->
-<!--                 type = 'column', -->
-<!--                 color='#212070', -->
-<!--                 dataLabels = list(enabled = TRUE, format='{point.y}')) %>% -->
-<!--   hc_add_series(name = "% New Visits", -->
-<!--                 data = (new_vol_trending_downtown %>% filter(Campus == x))$new_perc, -->
-<!--                 type = "line", yAxis = 1, -->
-<!--                 color='#d80b8c', -->
-<!--                 lineColor='#d80b8c', -->
-<!--                 dataLabels = list(enabled = TRUE, format='{point.y}%')) %>% -->
-<!--   hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>% -->
-<!--   hc_title(text = paste0(x, " - % New Visits"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>% -->
-<!--   hc_subtitle(text = paste0("Excludes Radiology and Rad Onc visits <br>", "Based on arrived visits from 2023-01-01"," to ",date_end), -->
-<!--               align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>% -->
-<!--   hc_tooltip(shared = TRUE, borderColor = "black") -->
-<!-- }) %>% -->
-<!--   hw_grid(ncol = 2, rowheight = 450) %>% htmltools::browsable() -->
-
-<!-- invisible(gc()) -->
-<!-- ``` -->
-
-<!-- ### 5. Hand Hygiene Trending -->
-<!-- ```{r Hand Hygiene Metric Trending by Site, fig.width=12, fig.height = 5, fig.align = 'center', echo = FALSE, warning = FALSE, message = FALSE} -->
-
-<!-- hh_site <- hh_data_merged %>% -->
-<!--   mutate(Month = format(as.Date(date, format="%Y-%m-%d"), "%Y-%m")) %>% -->
-<!--   filter(date >= date_start & date <= Sys.Date()) -->
+# new_vol_trending_downtown <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/new_vol_trending_downtown.rds"))
 
 
-<!-- hh_site <- hh_site %>% -->
-<!--   filter(!is.na(unit)) %>% -->
-<!--   group_by(site, Month) %>% -->
-<!--   summarise(worker___1 = sum(worker___1), -->
-<!--             worker___2 = sum(worker___2), -->
-<!--             worker___3 = sum(worker___3), -->
-<!--             provider_hands_bef = sum(provider_hands_bef), -->
-<!--             provider_hands_aft = sum(provider_hands_aft), -->
-<!--             nurse_hands_bef = sum(nurse_hands_bef), -->
-<!--             nurse_hands_aft = sum(nurse_hands_aft), -->
-<!--             mt_hands_bef = sum(mt_hands_bef), -->
-<!--             mt_hands_aft = sum(mt_hands_aft)) -->
+# Output Graphs ------------------------------
+map(unique(new_vol_trending_downtown$Campus), function(x){
+highchart() %>%
+  hc_yAxis_multiples(
+    list(title = list(text = "Total Visits"), lineWidth = 3),
+    list(title = list(text = "% of New Visits"), labels = list(format = '{value}%'),
+         showLastLabel = FALSE, opposite = TRUE)
+  ) %>%
+  hc_xAxis(title = list(text = ""),
+           # categories = (new_vol_trending_downtown %>% filter(Campus == x))$Appt.MonthYear,
+           categories = new_vol_trending_downtown$Appt.MonthYear,
+           type = "datetime",
+           labels = list(format = '{value:%m/%d}')
+           # dateTimeLabelFormats = list(month = '%Y-%m')
+           ) %>%
+  hc_add_series(name = "Total Visits",
+                data = (new_vol_trending_downtown %>% filter(Campus == x))$total_vol,
+                type = 'column',
+                color='#212070',
+                dataLabels = list(enabled = TRUE, format='{point.y}')) %>%
+  hc_add_series(name = "% New Visits",
+                data = (new_vol_trending_downtown %>% filter(Campus == x))$new_perc,
+                type = "line", yAxis = 1,
+                color='#d80b8c',
+                lineColor='#d80b8c',
+                dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
+  hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
+  hc_title(text = paste0(x, " - % New Visits"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+  hc_subtitle(text = paste0("Excludes Radiology and Rad Onc visits <br>", "Based on arrived visits from 2023-01-01"," to ",date_end),
+              align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
+  hc_tooltip(shared = TRUE, borderColor = "black")
+}) %>%
+  hw_grid(ncol = 2, rowheight = 450) %>% htmltools::browsable()
 
-<!-- hh_site <- hh_site %>% -->
-<!--   group_by(site, Month) %>% -->
-<!--   mutate(total_obs = sum(worker___1,worker___2,worker___3), -->
-<!--          total_comp = round((sum(max(provider_hands_bef,provider_hands_aft), -->
-<!--                           max(nurse_hands_bef, nurse_hands_aft), -->
-<!--                           max(mt_hands_bef, mt_hands_aft))/total_obs)*100)) %>% -->
-<!--   dplyr::select(site, Month, total_obs, total_comp) -->
+invisible(gc())
+```
 
-<!-- # network <- data.frame(site = "NETWORK", -->
-<!-- #                       Month = "2023-04", -->
-<!-- #                       total_obs = 0, -->
-<!-- #                       total_comp = 0) -->
-<!-- # -->
-<!-- # msw <- data.frame(site = "MSW", -->
-<!-- #                       Month = "2023-05", -->
-<!-- #                       total_obs = 0, -->
-<!-- #                       total_comp = 0) -->
+### 5. Hand Hygiene Trending
+```{r Hand Hygiene Metric Trending by Site, fig.width=12, fig.height = 5, fig.align = 'center', echo = FALSE, warning = FALSE, message = FALSE}
 
-<!-- # msdfp <- data.frame(site = "MSDFP", -->
-<!-- #                       Month = "2023-04", -->
-<!-- #                       total_obs = 0, -->
-<!-- #                       total_comp = 0) -->
-
-<!-- # hh_site <- bind_rows(hh_site, network, msw, msdfp) -->
-
-<!-- hh_site <- hh_site %>% -->
-<!--   arrange(site, Month) -->
-
-<!-- map(unique(hh_site$site), function(x){ -->
-
-<!--     highchart() %>% -->
-<!--   hc_yAxis_multiples( -->
-<!--     list(title = list(text = "Total Observations"), lineWidth = 3), -->
-<!--     list(title = list(text = "% Compliance"), labels = list(format = '{value}%'), -->
-<!--          showLastLabel = FALSE, opposite = TRUE) -->
-<!--   ) %>% -->
-<!--   hc_xAxis(title = list(text = ""), -->
-<!--            categories =(hh_site %>% filter(site == x))$Month, -->
-<!--            # type = "datetime", -->
-<!--            # labels = list(format = '{value:%m/%d}') -->
-<!--            dateTimeLabelFormats = list(month = '%Y-%m') -->
-<!--            ) %>% -->
-<!--   hc_add_series(name = "Total Observations Submitted", -->
-<!--                 data = (hh_site %>% filter(site == x))$total_obs, -->
-<!--                 type = 'column', -->
-<!--                 color='#00aeef', -->
-<!--                 dataLabels = list(enabled = TRUE, format='{point.y}')) %>% -->
-<!--   hc_add_series(name = "% Observations Complied", -->
-<!--                 data = (hh_site %>% filter(site == x))$total_comp, -->
-<!--                 type = "line", yAxis = 1, -->
-<!--                 color='#d80b8c', -->
-<!--                 lineColor='#d80b8c', -->
-<!--                 dataLabels = list(enabled = TRUE, format='{point.y}%')) %>% -->
-<!--   hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>% -->
-<!--   hc_title(text = paste0(x, " - Hand Hygiene Compliance %"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>% -->
-<!--   # hc_subtitle(text = paste0("Based on visits from ",date_start," to ",date_end), -->
-<!--   #             align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>% -->
-<!--   hc_tooltip(shared = TRUE, borderColor = "black") -->
-<!-- }) %>% -->
-<!--   hw_grid(ncol = 2, rowheight = 400) %>% htmltools::browsable() -->
+hh_site <- hh_data_merged %>%
+  mutate(Month = format(as.Date(date, format="%Y-%m-%d"), "%Y-%m")) %>%
+  filter(date >= date_start & date <= Sys.Date())
 
 
-<!-- invisible(gc()) -->
+hh_site <- hh_site %>%
+  filter(!is.na(unit)) %>%
+  group_by(site, Month) %>%
+  summarise(worker___1 = sum(worker___1),
+            worker___2 = sum(worker___2),
+            worker___3 = sum(worker___3),
+            provider_hands_bef = sum(provider_hands_bef),
+            provider_hands_aft = sum(provider_hands_aft),
+            nurse_hands_bef = sum(nurse_hands_bef),
+            nurse_hands_aft = sum(nurse_hands_aft),
+            mt_hands_bef = sum(mt_hands_bef),
+            mt_hands_aft = sum(mt_hands_aft))
 
-<!-- ``` -->
+hh_site <- hh_site %>%
+  group_by(site, Month) %>%
+  mutate(total_obs = sum(worker___1,worker___2,worker___3),
+         total_comp = round((sum(max(provider_hands_bef,provider_hands_aft),
+                          max(nurse_hands_bef, nurse_hands_aft),
+                          max(mt_hands_bef, mt_hands_aft))/total_obs)*100)) %>%
+  dplyr::select(site, Month, total_obs, total_comp)
+
+# network <- data.frame(site = "NETWORK",
+#                       Month = "2023-04",
+#                       total_obs = 0,
+#                       total_comp = 0)
+#
+# msw <- data.frame(site = "MSW",
+#                       Month = "2023-05",
+#                       total_obs = 0,
+#                       total_comp = 0)
+
+# msdfp <- data.frame(site = "MSDFP",
+#                       Month = "2023-04",
+#                       total_obs = 0,
+#                       total_comp = 0)
+
+# hh_site <- bind_rows(hh_site, network, msw, msdfp)
+
+hh_site <- hh_site %>%
+  arrange(site, Month)
+
+map(unique(hh_site$site), function(x){
+
+    highchart() %>%
+  hc_yAxis_multiples(
+    list(title = list(text = "Total Observations"), lineWidth = 3),
+    list(title = list(text = "% Compliance"), labels = list(format = '{value}%'),
+         showLastLabel = FALSE, opposite = TRUE)
+  ) %>%
+  hc_xAxis(title = list(text = ""),
+           categories =(hh_site %>% filter(site == x))$Month,
+           # type = "datetime",
+           # labels = list(format = '{value:%m/%d}')
+           dateTimeLabelFormats = list(month = '%Y-%m')
+           ) %>%
+  hc_add_series(name = "Total Observations Submitted",
+                data = (hh_site %>% filter(site == x))$total_obs,
+                type = 'column',
+                color='#00aeef',
+                dataLabels = list(enabled = TRUE, format='{point.y}')) %>%
+  hc_add_series(name = "% Observations Complied",
+                data = (hh_site %>% filter(site == x))$total_comp,
+                type = "line", yAxis = 1,
+                color='#d80b8c',
+                lineColor='#d80b8c',
+                dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
+  hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
+  hc_title(text = paste0(x, " - Hand Hygiene Compliance %"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+  # hc_subtitle(text = paste0("Based on visits from ",date_start," to ",date_end),
+  #             align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
+  hc_tooltip(shared = TRUE, borderColor = "black")
+}) %>%
+  hw_grid(ncol = 2, rowheight = 400) %>% htmltools::browsable()
 
 
-<!-- -------------------------------------------------------------------------------- -->
-<!-- ```{r Hand Hygiene Trending Summarized, echo = FALSE, warning = FALSE, message = FALSE} -->
+invisible(gc())
 
-<!-- hh_downtown <- hh_data_merged %>% -->
-<!--   mutate(Month = format(as.Date(date, format="%Y-%m-%d"), "%Y-%m")) %>% -->
-<!--   filter(date >= date_start & date <= Sys.Date()) -->
+```
 
-<!-- hh_downtown <- hh_downtown %>% -->
-<!--   filter(unit != "NULL") %>% -->
-<!--   filter(site %in% c("MSUS","MSDMG","MSBI")) %>% -->
-<!--   mutate(site = "MS Downtown") %>% -->
-<!--   group_by(site, Month) %>% -->
-<!--   summarise(worker___1 = sum(worker___1), -->
-<!--             worker___2 = sum(worker___2), -->
-<!--             worker___3 = sum(worker___3), -->
-<!--             provider_hands_bef = sum(provider_hands_bef), -->
-<!--             provider_hands_aft = sum(provider_hands_aft), -->
-<!--             nurse_hands_bef = sum(nurse_hands_bef), -->
-<!--             nurse_hands_aft = sum(nurse_hands_aft), -->
-<!--             mt_hands_bef = sum(mt_hands_bef), -->
-<!--             mt_hands_aft = sum(mt_hands_aft)) -->
 
-<!-- hh_downtown <- hh_downtown %>% -->
-<!--   group_by(site, Month) %>% -->
-<!--   mutate(total_obs = sum(worker___1,worker___2,worker___3), -->
-<!--          total_comp = round((sum(min(provider_hands_bef,provider_hands_aft), -->
-<!--                           min(nurse_hands_bef, nurse_hands_aft), -->
-<!--                           min(mt_hands_bef, mt_hands_aft))/total_obs)*100)) %>% -->
-<!--   dplyr::select(site, Month, total_obs, total_comp) -->
+--------------------------------------------------------------------------------
+```{r Hand Hygiene Trending Summarized, echo = FALSE, warning = FALSE, message = FALSE}
 
-<!-- map(unique(hh_downtown$site), function(x){ -->
+hh_downtown <- hh_data_merged %>%
+  mutate(Month = format(as.Date(date, format="%Y-%m-%d"), "%Y-%m")) %>%
+  filter(date >= date_start & date <= Sys.Date())
 
-<!--   highchart() %>% -->
-<!--   hc_yAxis_multiples( -->
-<!--     list(title = list(text = "Total Observations"), lineWidth = 3), -->
-<!--     list(title = list(text = "% Compliance"), labels = list(format = '{value}%'), -->
-<!--          showLastLabel = FALSE, opposite = TRUE) -->
-<!--   ) %>% -->
-<!--   hc_xAxis(title = list(text = ""), -->
-<!--            categories =(hh_downtown %>% filter(site == x))$Month, -->
-<!--            # type = "datetime", -->
-<!--            # labels = list(format = '{value:%m/%d}') -->
-<!--            dateTimeLabelFormats = list(month = '%Y-%m') -->
-<!--            ) %>% -->
-<!--   hc_add_series(name = "Total Observations Submitted", -->
-<!--                 data = (hh_downtown %>% filter(site == x))$total_obs, -->
-<!--                 type = 'column', -->
-<!--                 color='#00aeef', -->
-<!--                 dataLabels = list(enabled = TRUE, format='{point.y}')) %>% -->
-<!--   hc_add_series(name = "% Observations Complied", -->
-<!--                 data = (hh_downtown %>% filter(site == x))$total_comp, -->
-<!--                 type = "line", yAxis = 1, -->
-<!--                 color='#d80b8c', -->
-<!--                 lineColor='#d80b8c', -->
-<!--                 dataLabels = list(enabled = TRUE, format='{point.y}%')) %>% -->
-<!--   hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>% -->
-<!--   hc_title(text = paste0(x, " - Hand Hygiene Compliance %"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>% -->
-<!--   # hc_subtitle(text = paste0("Based on visits from ",date_start," to ",date_end), -->
-<!--   #             align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>% -->
-<!--   hc_tooltip(shared = TRUE, borderColor = "black") -->
-<!-- }) %>% -->
-<!--   hw_grid(ncol = 2, rowheight = 400) %>% htmltools::browsable() -->
-<!-- invisible(gc()) -->
-<!-- ``` -->
+hh_downtown <- hh_downtown %>%
+  filter(unit != "NULL") %>%
+  filter(site %in% c("MSUS","MSDMG","MSBI")) %>%
+  mutate(site = "MS Downtown") %>%
+  group_by(site, Month) %>%
+  summarise(worker___1 = sum(worker___1),
+            worker___2 = sum(worker___2),
+            worker___3 = sum(worker___3),
+            provider_hands_bef = sum(provider_hands_bef),
+            provider_hands_aft = sum(provider_hands_aft),
+            nurse_hands_bef = sum(nurse_hands_bef),
+            nurse_hands_aft = sum(nurse_hands_aft),
+            mt_hands_bef = sum(mt_hands_bef),
+            mt_hands_aft = sum(mt_hands_aft))
+
+hh_downtown <- hh_downtown %>%
+  group_by(site, Month) %>%
+  mutate(total_obs = sum(worker___1,worker___2,worker___3),
+         total_comp = round((sum(min(provider_hands_bef,provider_hands_aft),
+                          min(nurse_hands_bef, nurse_hands_aft),
+                          min(mt_hands_bef, mt_hands_aft))/total_obs)*100)) %>%
+  dplyr::select(site, Month, total_obs, total_comp)
+
+map(unique(hh_downtown$site), function(x){
+
+  highchart() %>%
+  hc_yAxis_multiples(
+    list(title = list(text = "Total Observations"), lineWidth = 3),
+    list(title = list(text = "% Compliance"), labels = list(format = '{value}%'),
+         showLastLabel = FALSE, opposite = TRUE)
+  ) %>%
+  hc_xAxis(title = list(text = ""),
+           categories =(hh_downtown %>% filter(site == x))$Month,
+           # type = "datetime",
+           # labels = list(format = '{value:%m/%d}')
+           dateTimeLabelFormats = list(month = '%Y-%m')
+           ) %>%
+  hc_add_series(name = "Total Observations Submitted",
+                data = (hh_downtown %>% filter(site == x))$total_obs,
+                type = 'column',
+                color='#00aeef',
+                dataLabels = list(enabled = TRUE, format='{point.y}')) %>%
+  hc_add_series(name = "% Observations Complied",
+                data = (hh_downtown %>% filter(site == x))$total_comp,
+                type = "line", yAxis = 1,
+                color='#d80b8c',
+                lineColor='#d80b8c',
+                dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
+  hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
+  hc_title(text = paste0(x, " - Hand Hygiene Compliance %"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+  # hc_subtitle(text = paste0("Based on visits from ",date_start," to ",date_end),
+  #             align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
+  hc_tooltip(shared = TRUE, borderColor = "black")
+}) %>%
+  hw_grid(ncol = 2, rowheight = 400) %>% htmltools::browsable()
+invisible(gc())
+```
 
 <!-- ## MSHS -->
 <!-- ### 1. MSHS Open Encounters -->
