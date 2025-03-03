@@ -558,34 +558,34 @@ hh_data_merged <- hh_data_merged %>%
 
 ```{r Scheduling Data Processing, echo = FALSE, warning = FALSE, message = FALSE}
 
-scheduling_data <- tbl(conn1, "MV_DM_PATIENT_ACCESS") %>%
-  left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
-            by = c("DEPARTMENT_ID")) %>%
-  mutate(radiology_check = ifelse((DEP_CLASS == "OP") | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (DEP_CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
-  mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
-  filter(radiology_check == "Include") %>%
-  filter(!is.na(SITE)) %>%
-  mutate(Campus = SITE) %>%
-  # mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
-  #                           DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC",
-  #                           TRUE ~ SITE)) %>%
-  filter(!Campus %in% c("MS NOW", "MSHP", "OTHER", "ONCOLOGY")) %>%
-  mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
-         Appt.Year = year(CONTACT_DATE),
-         Appt.MonNum = month(CONTACT_DATE),
-         Appt.Made.DateYear = TO_DATE(APPT_MADE_DATE),
-         Appt.Made.Year = year(APPT_MADE_DATE),
-         Appt.Made.MonNum = month(APPT_MADE_DATE)) %>%
-  mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
-  mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
-  mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
-  mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
-         New.PT3 = ifelse(LOS_NAME %LIKE% "%INITIAL%" | LOS_NAME %LIKE% "%NEW%", "New", "Established"),
-         enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
-  mutate(open.days = ifelse(enc.status == "OPEN",
-                            TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
-                            TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
-  mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" )))
+# scheduling_data <- tbl(conn1, "MV_DM_PATIENT_ACCESS") %>%
+#   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
+#             by = c("DEPARTMENT_ID")) %>%
+#   mutate(radiology_check = ifelse((DEP_CLASS == "OP") | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (DEP_CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
+#   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
+#   filter(radiology_check == "Include") %>%
+#   filter(!is.na(SITE)) %>%
+#   mutate(Campus = SITE) %>%
+#   # mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
+#   #                           DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC",
+#   #                           TRUE ~ SITE)) %>%
+#   filter(!Campus %in% c("MS NOW", "MSHP", "OTHER", "ONCOLOGY")) %>%
+#   mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
+#          Appt.Year = year(CONTACT_DATE),
+#          Appt.MonNum = month(CONTACT_DATE),
+#          Appt.Made.DateYear = TO_DATE(APPT_MADE_DATE),
+#          Appt.Made.Year = year(APPT_MADE_DATE),
+#          Appt.Made.MonNum = month(APPT_MADE_DATE)) %>%
+#   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+#   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+#   mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+#   mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
+#          New.PT3 = ifelse(LOS_NAME %LIKE% "%INITIAL%" | LOS_NAME %LIKE% "%NEW%", "New", "Established"),
+#          enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
+#   mutate(open.days = ifelse(enc.status == "OPEN",
+#                             TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
+#                             TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
+#   mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" )))
 
 
 
