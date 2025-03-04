@@ -675,6 +675,10 @@ missing_chg_data_trend_5days <- as.data.frame(readRDS("/nfs/data/Applications/Am
 missing_chg_data_trend_downtown_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_downtown_5days.rds"))
 
 
+check <- access_raw_tbl %>%
+  filter(PAT_ENC_CSN_ID == "100174756129") %>%
+  collect()
+
 ```
 
 
@@ -912,97 +916,59 @@ invisible(gc())
 ```
 
 
-```{r}
+```{r Volume Pull}
 
-
-#
-# scheduling_data <- access_raw_tbl %>%
-#     filter(PATIENT_CLASS %NOT LIKE% '%INPATIENT%') %>%
-#   filter(PATIENT_CLASS %NOT LIKE% '%EMERGENCY%') %>%
+# scheduling_data <- tbl(conn1, "MV_DM_PATIENT_ACCESS") %>%
+#   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
+#             by = c("DEPARTMENT_ID")) %>%
+#   mutate(radiology_check = ifelse((DEP_CLASS == "OP") | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (DEP_CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
+#   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
+#   filter(radiology_check == "Include") %>%
 #   filter(!is.na(SITE)) %>%
-#   mutate(Campus = case_when(SITE == "MSDD" ~ "MSDMG",
-#                             TRUE ~ SITE)) %>%
+#   mutate(Campus = SITE) %>%
 #   # mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
 #   #                           DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC",
-#   #                           TRUE ~ Campus)) %>%
-#   filter(!Campus %in% c("MS NOW", "MSHP", "OTHER")) %>%
+#   #                           TRUE ~ SITE)) %>%
+#   filter(!Campus %in% c("MS NOW", "MSHP", "OTHER", "ONCOLOGY")) %>%
 #   mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
 #          Appt.Year = year(CONTACT_DATE),
-#          Appt.MonNum = month(CONTACT_DATE)) %>%
+#          Appt.MonNum = month(CONTACT_DATE),
+#          Appt.Made.DateYear = TO_DATE(APPT_MADE_DATE),
+#          Appt.Made.Year = year(APPT_MADE_DATE),
+#          Appt.Made.MonNum = month(APPT_MADE_DATE)) %>%
+#   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+#   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+#   mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
 #   mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
-#          New.PT3 = ifelse(is.na(LOS_NAME), NA, ifelse(LOC_NAME %like% "INITIAL|NEW", "New", "Established")),
+#          New.PT3 = ifelse(LOS_NAME %LIKE% "%INITIAL%" | LOS_NAME %LIKE% "%NEW%", "New", "Established"),
 #          enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
 #   mutate(open.days = ifelse(enc.status == "OPEN",
 #                             TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
 #                             TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
 #   mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" )))
-#
+# 
+# 
 # # Format Data --------------------------
-# data <- access_raw_tbl %>%
+# data <- scheduling_data %>%
+#   filter(year(CONTACT_DATE) >= 2024) %>%
 #   filter(DERIVED_STATUS_DESC == "Arrived") %>%
-#   mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
-#          Appt.Year = year(CONTACT_DATE),
-#          Appt.MonNum = month(CONTACT_DATE)) %>%
-#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, Appt.Year, Appt.MonNum, VISIT_GROUP_NUM) %>%
+#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, Appt.Year, Appt.MonNum, CONTACT_DATE, VISIT_GROUP_NUM) %>%
 #   summarise(total = n()) %>%
 #   collect() %>%
 #   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
 #   mutate(Appt.Year = as.character(Appt.Year))
-#
-#
-#
-#
-#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
-#   filter(TO_DATE(date_start_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
-#   # filter(TO_DATE(date_end_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
-#   group_by(Campus, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, Appt.Year, Appt.MonNum) %>%
-#   summarise(total = n()) %>%
-#   collect() %>%
-#   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
-#   mutate(Appt.Year = as.character(Appt.Year))
-#
-#
-# data_list <- list("Volume" = vol_trending,
-#                   "Radiology" = radiology_data_raw,
-#                   "Rad Onc" = rad_onc_data_raw)
-#
+# 
+# 
+# # data_list <- list("Volume" = vol_trending,
+# #                   "Radiology" = radiology_data_raw,
+# #                   "Rad Onc" = rad_onc_data_raw)
+# 
+# data_list <- list("EPIC" = data,
+#                   "Rad and RadOnc" = rad_radOnc_data)
+# 
 # require(openxlsx)
-# write.xlsx(data_list, "May 2024 Data.xlsx")
+# write.xlsx(data_list, "Feb 2025 Data.xlsx")
 
-```
-
-
-```{r Ambulatory Volume Update for Kelly, echo = FALSE, warning = FALSE, message = FALSE}
-
-# volume <- access_raw_tbl %>%
-#   # filter(PATIENT_CLASS %NOT LIKE% '%INPATIENT%') %>%
-#   # filter(PATIENT_CLASS %NOT LIKE% '%EMERGENCY%') %>%
-#   mutate(Appt.Year = year(CONTACT_DATE),
-#          Appt.MonNum = month(CONTACT_DATE)) %>%
-#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
-#   filter(Appt.Year >= 2019) %>%
-#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, DEPARTMENT_ID, DEP_RPT_GRP_ELEVEN, Appt.Year, Appt.MonNum, VISIT_METHOD, VISIT_GROUP_NUM, FINCLASS, PATIENT_CLASS) %>%
-#   summarise(total = n()) %>%
-#   collect()
-#
-# volume_new <- volume %>%
-#   mutate(Appt.YearMonth = paste0(Appt.Year, "-",as.numeric(Appt.MonNum)),
-#          Appt.Month = format(as.Date(paste0(paste0(Appt.Year, "-",as.numeric(Appt.MonNum)),"-01")), "%b"))
-#
-# require(openxlsx)
-# write.xlsx(volume, "Patient Class Validation.xlsx")
-#
-#
-# rad_radOnc_data_new <- rad_radOnc_data %>%
-#   mutate(DEP_RPT_GRP_ELEVEN = "RIS/MOSAIC",
-#          FINCLASS = "RIS/MOSAIC",
-#          Department = "RIS/MOSAIC",
-#          Visit.Method = "IN PERSON",
-#          Appt.YearMonth = paste0(Appt.Year, "-",as.numeric(Appt.MonNum))) %>%
-#   dplyr::select(Campus, Campus.Specialty, Department, DEP_RPT_GRP_ELEVEN, Appt.Year, Appt.MonNum, Visit.Method, FINCLASS, monthly_vol, Appt.YearMonth, Appt.Month)
-#
-# require(openxlsx)
-# write.xlsx(rad_radOnc_data_new, "RIS and MOSAIC Jan19Nov24.xlsx")
 ```
 
 
@@ -1216,7 +1182,7 @@ new_vol <- access_raw_tbl %>%
   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
   mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
-         New.PT3 = ifelse(LOS_NAME %LIKE% "%INITIAL%" | LOS_NAME %LIKE% "%NEW%", "New", "Established"),
+         New.PT3 = ifelse(is.na(LOS_NAME), "Established", ifelse(LOS_NAME %LIKE% "%INITIAL%" | LOS_NAME %LIKE% "%NEW%", "New", "Established")),
          enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
   mutate(open.days = ifelse(enc.status == "OPEN",
                             TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
@@ -1241,7 +1207,8 @@ new_vol_trending_mshs <- new_vol %>%
          new_perc = round((New/(total_vol))*100,0)) %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Year = as.character(Appt.Year)) %>%
-  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year)) %>%
+  arrange(Campus, Appt.Year, Appt.MonNum)
 
 
 new_vol_trending <- new_vol %>%
@@ -1252,7 +1219,8 @@ new_vol_trending <- new_vol %>%
          new_perc = round((New/(total_vol))*100,0)) %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Year = as.character(Appt.Year)) %>%
-  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year)) %>%
+  arrange(Campus, Appt.Year, Appt.MonNum)
 
 new_vol_trending <- bind_rows(new_vol_trending_mshs, new_vol_trending)
 
@@ -1310,7 +1278,8 @@ new_vol_trending_downtown <- new_vol %>%
          new_perc = round((New/(total_vol))*100,0)) %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Year = as.character(Appt.Year)) %>%
-  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year)) %>%
+  arrange(Campus, Appt.Year, Appt.MonNum)
 
 # new_vol_trending_downtown <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/new_vol_trending_downtown.rds"))
 
@@ -1400,7 +1369,8 @@ new_waitTime_trending_mshs <- new_waitTime %>%
          perc_new_lead_14days = round((lead_14days/(lead_14days + lead_14days_more))*100,0)) %>%
   mutate(Appt.Made.Month = format(as.Date(paste0(Appt.Made.MonNum, "-01-", Appt.Made.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Made.Year = as.character(Appt.Made.Year)) %>%
-  mutate(Appt.Made.MonthYear = paste0(Appt.Made.Month,"-",Appt.Made.Year))
+  mutate(Appt.Made.MonthYear = paste0(Appt.Made.Month,"-",Appt.Made.Year)) %>%
+  arrange(Campus, Appt.Made.Year, Appt.Made.MonNum)
 
 
 new_waitTime_trending <- new_waitTime %>%
@@ -1412,7 +1382,8 @@ new_waitTime_trending <- new_waitTime %>%
          perc_new_lead_14days = round((lead_14days/(lead_14days + lead_14days_more))*100,0)) %>%
   mutate(Appt.Made.Month = format(as.Date(paste0(Appt.Made.MonNum, "-01-", Appt.Made.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Made.Year = as.character(Appt.Made.Year)) %>%
-  mutate(Appt.Made.MonthYear = paste0(Appt.Made.Month,"-",Appt.Made.Year))
+  mutate(Appt.Made.MonthYear = paste0(Appt.Made.Month,"-",Appt.Made.Year)) %>%
+  arrange(Campus, Appt.Made.Year, Appt.Made.MonNum)
 
 
 new_waitTime_trending <- bind_rows(new_waitTime_trending_mshs, new_waitTime_trending)
@@ -1473,7 +1444,8 @@ new_waitTime_trending_downtown <- new_waitTime %>%
          perc_new_lead_14days = round((lead_14days/(lead_14days + lead_14days_more))*100,0)) %>%
   mutate(Appt.Made.Month = format(as.Date(paste0(Appt.Made.MonNum, "-01-", Appt.Made.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Made.Year = as.character(Appt.Made.Year)) %>%
-  mutate(Appt.Made.MonthYear = paste0(Appt.Made.Month,"-",Appt.Made.Year))
+  mutate(Appt.Made.MonthYear = paste0(Appt.Made.Month,"-",Appt.Made.Year)) %>%
+  arrange(Campus, Appt.Made.Year, Appt.Made.MonNum)
 
 
 # Output Graphs ------------------------------
@@ -1553,6 +1525,23 @@ no_show_rate <- access_raw_tbl %>%
 
 
 
+no_show_rate_trend_mshs <- no_show_rate %>%
+  mutate(Campus = "MSHS: All Sites") %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, appt_status) %>%
+  summarise(total = sum(total, na.rm = T)) %>%
+  pivot_wider(names_from = appt_status,
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(total_noShow_Cancel = (`No Show` + SameDay_Canceled),
+         perc_noShowPlus = round(((`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled))*100,0),
+         perc_noShow = round(((`No Show`)/(Arrived + `No Show` + SameDay_Canceled))*100,0),
+         perc_SameDayCanceled = round(((SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled))*100,0)) %>%
+  mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+  mutate(Appt.Year = as.character(Appt.Year)) %>%
+  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year)) %>%
+  arrange(Campus, Appt.Year, Appt.MonNum)
+
+
 no_show_rate_trend <- no_show_rate %>%
   group_by(Campus, Appt.Year, Appt.MonNum, appt_status) %>%
   summarise(total = sum(total, na.rm = T)) %>%
@@ -1565,9 +1554,11 @@ no_show_rate_trend <- no_show_rate %>%
          perc_SameDayCanceled = round(((SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled))*100,0)) %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Year = as.character(Appt.Year)) %>%
-  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year)) %>%
+  arrange(Campus, Appt.Year, Appt.MonNum)
 
 
+no_show_rate_trend <- bind_rows(no_show_rate_trend_mshs, no_show_rate_trend)
 
 # Output Graphs ------------------------------
 map(unique(no_show_rate_trend$Campus), function(x){
@@ -1624,7 +1615,8 @@ no_show_rate_trend_downtown <- no_show_rate %>%
          perc_SameDayCanceled = round(((SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled))*100,0)) %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Year = as.character(Appt.Year)) %>%
-  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year))
+  mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year)) %>%
+  arrange(Campus, Appt.Year, Appt.MonNum)
 
 
 # Output Graphs ------------------------------
