@@ -1321,7 +1321,7 @@ highchart() %>%
 invisible(gc())
 ```
 
-### 4. MSHS New Patient Access
+### 4. New Patient Access
 ```{r MSHS Time to Appointment Metrics by Site, echo = FALSE, warning = FALSE, message = FALSE}
 
 new_waitTime <- access_raw_tbl %>%
