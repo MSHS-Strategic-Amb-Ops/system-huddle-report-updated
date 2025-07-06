@@ -274,6 +274,11 @@ scale_fill_MountSinai <- function(palette = "all", discrete = TRUE, reverse = FA
 
 # Connection to Oracle DB ------------------------------------------------------
 conn1 <- dbPool(drv = odbc(), dsn = "OAO Cloud DB SoYoun", timeout = 30)
+conn2 <- dbConnect(odbc(), 
+                  "Clarity_prod", 
+                  uid = "kweons01" , 
+                  pwd = "kweons01123$")
+
 
 access_raw_tbl <- tbl(conn1, "MV_DM_PATIENT_ACCESS")
 radiology_tbl <- tbl(conn1, "RADIOLOGY_DATA")
@@ -285,6 +290,13 @@ missing_enc_resource_tbl <- tbl(conn1, "OPEN_ENC_EXCLUSION_RESOURCE")
 hh_crosswalk_tbl <- tbl(conn1, "HH_CROSSWALK") 
 
 radiology_dep_mapping_tbl <- tbl(conn1, "RADIOLOGY_DEP_MAPPING")
+
+
+clarity_ser_tbl <- tbl(conn2, "CLARITY_SER")
+clarity_ser_2_tbl <- tbl(conn2, "CLARITY_SER_2")
+
+clarity_ser <- clarity_ser_tbl %>% select(PROV_ID, PROV_TYPE) %>% collect()
+clarity_ser_2 <- clarity_ser_2_tbl %>% select(PROV_ID, NPI) %>% collect()
 
 
 ```
@@ -675,10 +687,6 @@ missing_chg_data_trend_5days <- as.data.frame(readRDS("/nfs/data/Applications/Am
 missing_chg_data_trend_downtown_5days <- as.data.frame(readRDS("/nfs/data/Applications/Ambulatory/Data_Updated/missing_chg_data_trend_downtown_5days.rds"))
 
 
-check <- access_raw_tbl %>%
-  filter(PAT_ENC_CSN_ID == "100174756129") %>%
-  collect()
-
 ```
 
 
@@ -918,62 +926,48 @@ invisible(gc())
 
 ```{r Volume Pull}
 
-# scheduling_data <- tbl(conn1, "MV_DM_PATIENT_ACCESS") %>%
-#   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
-#             by = c("DEPARTMENT_ID")) %>%
-#   mutate(radiology_check = ifelse((DEP_CLASS == "OP") | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (DEP_CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
-#   mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
-#   filter(radiology_check == "Include") %>%
-#   filter(!is.na(SITE)) %>%
-#   mutate(Campus = SITE) %>%
-#   # mutate(Campus = case_when(DEPARTMENT_NAME %in% c("1176 5TH DUBIN MED ONC", "1176 5TH DUBIN SURG ONC") ~ "DUBIN",
-#   #                           DEPARTMENT_NAME %in% c("1468 MADISON CANCER", "1470 MADISON CANCER CENTER", "10 E 102ND ST INFUSION WHITE BAG", "THERAPEUTIC INF") ~ "RTC",
-#   #                           TRUE ~ SITE)) %>%
-#   filter(!Campus %in% c("MS NOW", "MSHP", "OTHER", "ONCOLOGY")) %>%
-#   mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
-#          Appt.Year = year(CONTACT_DATE),
-#          Appt.MonNum = month(CONTACT_DATE),
-#          Appt.Made.DateYear = TO_DATE(APPT_MADE_DATE),
-#          Appt.Made.Year = year(APPT_MADE_DATE),
-#          Appt.Made.MonNum = month(APPT_MADE_DATE)) %>%
-#   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
-#   mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
-#   mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
-#   mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
-#          New.PT3 = ifelse(LOS_NAME %LIKE% "%INITIAL%" | LOS_NAME %LIKE% "%NEW%", "New", "Established"),
-#          enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
-#   mutate(open.days = ifelse(enc.status == "OPEN",
-#                             TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
-#                             TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
-#   mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" )))
-# 
-# 
-# # Format Data --------------------------
-# data <- scheduling_data %>%
-#   filter(year(CONTACT_DATE) >= 2024) %>%
-#   filter(DERIVED_STATUS_DESC == "Arrived") %>%
-#   group_by(SITE, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, Appt.Year, Appt.MonNum, CONTACT_DATE, VISIT_GROUP_NUM) %>%
-#   summarise(total = n()) %>%
-#   collect() %>%
-#   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
-#   mutate(Appt.Year = as.character(Appt.Year))
-# 
-# 
-# # data_list <- list("Volume" = vol_trending,
-# #                   "Radiology" = radiology_data_raw,
-# #                   "Rad Onc" = rad_onc_data_raw)
-# 
-# data_list <- list("EPIC" = data,
-#                   "Rad and RadOnc" = rad_radOnc_data)
-# 
-# require(openxlsx)
-# write.xlsx(data_list, "Feb 2025 Data.xlsx")
+vollume <- access_raw_tbl %>%
+  left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
+            by = c("DEPARTMENT_ID")) %>%
+  mutate(radiology_check = ifelse((DEP_CLASS == "OP") | (DEP_CLASS == "IP_OP" & PATIENT_CLASS %LIKE% '%OUTPATIENT%') | (DEP_CLASS == "IP_OP" & is.na(PATIENT_CLASS)), "Include", "Exclude")) %>%
+  mutate(radiology_check = ifelse(is.na(radiology_check), "Include", radiology_check)) %>%
+  filter(radiology_check == "Include") %>%
+  filter(!is.na(SITE)) %>%
+  mutate(Campus = SITE) %>%
+  filter(!Campus %in% c("MS NOW", "MSHP", "OTHER", "ONCOLOGY")) %>%
+  mutate(Appt.DateYear = TO_DATE(CONTACT_DATE),
+         Appt.Year = year(CONTACT_DATE),
+         Appt.MonNum = month(CONTACT_DATE),
+         Appt.Made.DateYear = TO_DATE(APPT_MADE_DATE),
+         Appt.Made.Year = year(APPT_MADE_DATE),
+         Appt.Made.MonNum = month(APPT_MADE_DATE)) %>%
+  mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
+  mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
+  mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
+  mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
+         New.PT3 = ifelse(LOS_NAME %LIKE% "%INITIAL%" | LOS_NAME %LIKE% "%NEW%", "New", "Established"),
+         enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
+  mutate(open.days = ifelse(enc.status == "OPEN",
+                            TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
+                            TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
+  mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" ))) %>%
+
+  filter(DERIVED_STATUS_DESC == "Arrived") %>%
+  filter(TO_DATE(date_start_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
+  # filter(TO_DATE(date_end_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
+  group_by(Campus, DEPT_SPECIALTY_NAME, DEPARTMENT_NAME, Appt.Year, Appt.MonNum, Visit.Method) %>%
+  summarise(monthly_vol = n()) %>%
+  collect() %>%
+  mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
+  mutate(Appt.Year = as.character(Appt.Year))
+
 
 ```
 
 
 ### 2. Visit Volume Variance Trending
 ```{r Volume Variance Trending by Site, echo = FALSE, warning = FALSE, message = FALSE}
+
 
 # Format Data --------------------------
 vol_trending <- access_raw_tbl %>%
@@ -1014,6 +1008,8 @@ vol_trending <- access_raw_tbl %>%
 
 # Merge with radiology and rad onc monthly volume
 vol_trending <- bind_rows(vol_trending, rad_radOnc_data)
+# vol_trending <- bind_rows(vol_trending %>% mutate(Source = "EPIC"), rad_radOnc_data %>% mutate(Source = "RIS/MOSAIC"))
+
 
 vol_trending_downtown <- vol_trending %>%
   filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>%
@@ -1191,9 +1187,13 @@ new_vol <- access_raw_tbl %>%
 
   filter(DERIVED_STATUS_DESC == "Arrived") %>%
   filter(TO_DATE(date_start_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
-  group_by(Campus, Appt.Year, Appt.MonNum, New.PT3) %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, New.PT3, PROV_ID) %>%
   summarise(total = n()) %>%
-  collect() 
+  collect() %>%
+  left_join(clarity_ser) %>%
+  filter(PROV_TYPE == "Physician") %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, New.PT3) %>%
+  summarise(total = sum(total, na.rm = T))
 
 
 new_vol_trending_mshs <- new_vol %>%
@@ -1488,6 +1488,7 @@ invisible(gc())
 ### 5. No Show Rate Trending
 ```{r No Show Metric Trending by Site, fig.width=12, fig.height = 5, fig.align = 'center', echo = FALSE, warning = FALSE, message = FALSE}
 
+
 no_show_rate <- access_raw_tbl %>%
   left_join(radiology_dep_mapping_tbl %>% select(DEPARTMENT_ID, DEP_CLASS),
             by = c("DEPARTMENT_ID")) %>%
@@ -1504,20 +1505,14 @@ no_show_rate <- access_raw_tbl %>%
          Appt.Made.Year = year(APPT_MADE_DATE),
          Appt.Made.MonNum = month(APPT_MADE_DATE)) %>%
   mutate(lead_days = CONTACT_DATE - APPT_MADE_DATE) %>%
-  mutate(cancel_lead_days = CONTACT_DATE - APPT_CANC_DATE) %>%
-  mutate(appt_status = ifelse(DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <=0, "SameDay_Canceled", DERIVED_STATUS_DESC)) %>%
-  mutate(Visit.Method  = ifelse(VISIT_METHOD == "IN PERSON", "IN PERSON", "TELEHEALTH"),
-         New.PT3 = ifelse(LOS_NAME %LIKE% "%INITIAL%" | LOS_NAME %LIKE% "%NEW%", "New", "Established"),
-         enc.status = ifelse(ENC_CLOSED_CHARGE_STATUS %in% c("OPEN", "CLOSED BUT COSIGN NEEDED"), 'OPEN', 'CLOSED')) %>%
-  mutate(open.days = ifelse(enc.status == "OPEN",
-                            TO_DATE(lubridate::today()) - TO_DATE(CONTACT_DATE),
-                            TO_DATE(Y_ENC_CLOSE_TIME) - TO_DATE(CONTACT_DATE))) %>%
-  mutate(Provider = trim(REGEXP_REPLACE(PROV_NAME_WID, "\\[.*?\\]", "" ))) %>%
-
-  filter(appt_status %in% c("Arrived","No Show","SameDay_Canceled")) %>%
+  mutate(cancel_lead_days = APPT_DTTM - APPT_CANC_DTTM) %>%
+  filter(DERIVED_STATUS_DESC == "Arrived" | 
+           DERIVED_STATUS_DESC == "No Show" |
+           (DERIVED_STATUS_DESC == "Canceled" & cancel_lead_days <= 1) |
+           (DERIVED_STATUS_DESC == "Rescheduled" & CANCEL_INITIATOR == "PATIENT" & cancel_lead_days <= 1)) %>%
   filter(TO_DATE(date_start_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
-  # filter(TO_DATE(date_end_formatted, "YYYY-MM-DD HH24:MI:SS") <= APPT_DTTM) %>%
-  group_by(Campus, Appt.Year, Appt.MonNum, appt_status) %>%
+  filter(TO_DATE(date_end_formatted, "YYYY-MM-DD HH24:MI:SS") > APPT_DTTM) %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, DERIVED_STATUS_DESC) %>%
   summarise(total = n()) %>%
   collect() %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
@@ -1527,15 +1522,15 @@ no_show_rate <- access_raw_tbl %>%
 
 no_show_rate_trend_mshs <- no_show_rate %>%
   mutate(Campus = "MSHS: All Sites") %>%
-  group_by(Campus, Appt.Year, Appt.MonNum, appt_status) %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, DERIVED_STATUS_DESC) %>%
   summarise(total = sum(total, na.rm = T)) %>%
-  pivot_wider(names_from = appt_status,
+  pivot_wider(names_from = DERIVED_STATUS_DESC,
               values_from = total,
               values_fill = 0) %>%
-  mutate(total_noShow_Cancel = (`No Show` + SameDay_Canceled),
-         perc_noShowPlus = round(((`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled))*100,0),
-         perc_noShow = round(((`No Show`)/(Arrived + `No Show` + SameDay_Canceled))*100,0),
-         perc_SameDayCanceled = round(((SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled))*100,0)) %>%
+  mutate(total_noShow_Cancel = Arrived + `No Show` + Canceled,
+         perc_noShowPlusPlus = round(((`No Show` + Canceled + Rescheduled)/(Arrived + `No Show` + Canceled + Rescheduled))*100,0),
+         perc_noShowPlus =  round(((`No Show` + Canceled)/(Arrived + `No Show` + Canceled))*100,0),
+         perc_noShow =  round(((`No Show`)/(Arrived + `No Show`))*100,0)) %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Year = as.character(Appt.Year)) %>%
   mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year)) %>%
@@ -1543,15 +1538,15 @@ no_show_rate_trend_mshs <- no_show_rate %>%
 
 
 no_show_rate_trend <- no_show_rate %>%
-  group_by(Campus, Appt.Year, Appt.MonNum, appt_status) %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, DERIVED_STATUS_DESC) %>%
   summarise(total = sum(total, na.rm = T)) %>%
-  pivot_wider(names_from = appt_status,
+  pivot_wider(names_from = DERIVED_STATUS_DESC,
               values_from = total,
               values_fill = 0) %>%
-  mutate(total_noShow_Cancel = (`No Show` + SameDay_Canceled),
-         perc_noShowPlus = round(((`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled))*100,0),
-         perc_noShow = round(((`No Show`)/(Arrived + `No Show` + SameDay_Canceled))*100,0),
-         perc_SameDayCanceled = round(((SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled))*100,0)) %>%
+  mutate(total_noShow_Cancel = Arrived + `No Show` + Canceled,
+         perc_noShowPlusPlus = round(((`No Show` + Canceled + Rescheduled)/(Arrived + `No Show` + Canceled + Rescheduled))*100,0),
+         perc_noShowPlus =  round(((`No Show` + Canceled)/(Arrived + `No Show` + Canceled))*100,0),
+         perc_noShow =  round(((`No Show`)/(Arrived + `No Show`))*100,0)) %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Year = as.character(Appt.Year)) %>%
   mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year)) %>%
@@ -1564,8 +1559,8 @@ no_show_rate_trend <- bind_rows(no_show_rate_trend_mshs, no_show_rate_trend)
 map(unique(no_show_rate_trend$Campus), function(x){
 highchart() %>%
   hc_yAxis_multiples(
-    list(title = list(text = "Total No Show/Same-Day Cancel"), lineWidth = 3),
-    list(title = list(text = "% No Show"), labels = list(format = '{value}%'),
+    list(title = list(text = "No Show and Late-Canceled"), lineWidth = 3),
+    list(title = list(text = "No Show Plus Rate"), labels = list(format = '{value}%'),
          showLastLabel = FALSE, opposite = TRUE)
   ) %>%
   hc_xAxis(title = list(text = ""),
@@ -1575,19 +1570,19 @@ highchart() %>%
            labels = list(format = '{value:%m/%d}')
            # dateTimeLabelFormats = list(month = '%Y-%m')
            ) %>%
-  hc_add_series(name = "Total Visits",
+  hc_add_series(name = "No Show and Late-Canceled",
                 data = (no_show_rate_trend %>% filter(Campus == x))$total_noShow_Cancel,
                 type = 'column',
                 color='#212070',
                 dataLabels = list(enabled = TRUE, format='{point.y}')) %>%
-  hc_add_series(name = "% New Visits",
+  hc_add_series(name = "No Show Plus Rate",
                 data = (no_show_rate_trend %>% filter(Campus == x))$perc_noShowPlus,
                 type = "line", yAxis = 1,
                 color='#d80b8c',
                 lineColor='#d80b8c',
                 dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
   hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
-  hc_title(text = paste0(x, " - % No Show"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+  hc_title(text = paste0(x, " - No Show Plus Rate"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
   hc_subtitle(text = paste0("Excludes Radiology and Rad Onc visits <br>", "Based on arrived visits from ", date_start, " to", date_end),
               align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
   hc_tooltip(shared = TRUE, borderColor = "black")
@@ -1604,15 +1599,15 @@ highchart() %>%
 no_show_rate_trend_downtown <- no_show_rate %>%
   filter(Campus %in% c("MSUS","MSDMG","MSBI")) %>%
   mutate(Campus = "MS Downtown") %>%
-  group_by(Campus, Appt.Year, Appt.MonNum, appt_status) %>%
+  group_by(Campus, Appt.Year, Appt.MonNum, DERIVED_STATUS_DESC) %>%
   summarise(total = sum(total, na.rm = T)) %>%
-  pivot_wider(names_from = appt_status,
+  pivot_wider(names_from = DERIVED_STATUS_DESC,
               values_from = total,
               values_fill = 0) %>%
-  mutate(total_noShow_Cancel = (`No Show` + SameDay_Canceled),
-         perc_noShowPlus = round(((`No Show` + SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled))*100,0),
-         perc_noShow = round(((`No Show`)/(Arrived + `No Show` + SameDay_Canceled))*100,0),
-         perc_SameDayCanceled = round(((SameDay_Canceled)/(Arrived + `No Show` + SameDay_Canceled))*100,0)) %>%
+  mutate(total_noShow_Cancel = Arrived + `No Show` + Canceled,
+         perc_noShowPlusPlus = round(((`No Show` + Canceled + Rescheduled)/(Arrived + `No Show` + Canceled + Rescheduled))*100,0),
+         perc_noShowPlus =  round(((`No Show` + Canceled)/(Arrived + `No Show` + Canceled))*100,0),
+         perc_noShow =  round(((`No Show`)/(Arrived + `No Show`))*100,0)) %>%
   mutate(Appt.Month = format(as.Date(paste0(Appt.MonNum, "-01-", Appt.Year), "%m-%d-%Y"), "%b")) %>%
   mutate(Appt.Year = as.character(Appt.Year)) %>%
   mutate(Appt.MonthYear = paste0(Appt.Month,"-",Appt.Year)) %>%
@@ -1623,8 +1618,8 @@ no_show_rate_trend_downtown <- no_show_rate %>%
 map(unique(no_show_rate_trend_downtown$Campus), function(x){
 highchart() %>%
   hc_yAxis_multiples(
-    list(title = list(text = "Total No Show/Same-Day Cancel"), lineWidth = 3),
-    list(title = list(text = "% No Show"), labels = list(format = '{value}%'),
+    list(title = list(text = "No Show and Late-Canceled"), lineWidth = 3),
+    list(title = list(text = "No Show Plus Rate"), labels = list(format = '{value}%'),
          showLastLabel = FALSE, opposite = TRUE)
   ) %>%
   hc_xAxis(title = list(text = ""),
@@ -1634,19 +1629,19 @@ highchart() %>%
            labels = list(format = '{value:%m/%d}')
            # dateTimeLabelFormats = list(month = '%Y-%m')
            ) %>%
-  hc_add_series(name = "Total Visits",
+  hc_add_series(name = "No Show and Late-Canceled",
                 data = (no_show_rate_trend_downtown %>% filter(Campus == x))$total_noShow_Cancel,
                 type = 'column',
                 color='#212070',
                 dataLabels = list(enabled = TRUE, format='{point.y}')) %>%
-  hc_add_series(name = "% New Visits",
+  hc_add_series(name = "No Show Plus Rate",
                 data = (no_show_rate_trend_downtown %>% filter(Campus == x))$perc_noShowPlus,
                 type = "line", yAxis = 1,
                 color='#d80b8c',
                 lineColor='#d80b8c',
                 dataLabels = list(enabled = TRUE, format='{point.y}%')) %>%
   hc_legend(align = "left", verticalAlign = "top", itemStyle = list(fontFamily ='Calibri',color ='black', fontSize = "14px")) %>%
-  hc_title(text = paste0(x, " - % No Show"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
+  hc_title(text = paste0(x, " - No Show Plus Rate"), align = "left", style = list(fontWeight = 'bold', fontSize = "22px", fontFamily = "Calibri")) %>%
   hc_subtitle(text = paste0("Excludes Radiology and Rad Onc visits <br>", "Based on arrived visits from ", date_start, " to", date_end),
               align = "left", style = list(fontFace = "italic", fontSize = "16px", fontFamily = "Calibri")) %>%
   hc_tooltip(shared = TRUE, borderColor = "black")
